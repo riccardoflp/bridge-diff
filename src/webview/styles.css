@@ -112,6 +112,34 @@ body {
   background: color-mix(in srgb, var(--bd-removed-text) 35%, transparent);
 }
 
+/* boundary marker on the side where a pure insertion/deletion has no lines:
+   a horizontal divider between the row above and the row below, meeting the
+   thin edge of the gutter connector */
+.bd-divider-top {
+  border-top: 1px solid var(--bd-divider-color);
+}
+
+.bd-divider-bottom {
+  border-bottom: 1px solid var(--bd-divider-color);
+}
+
+.bd-divider-added {
+  --bd-divider-color: var(--vscode-editorGutter-addedBackground, #487e02);
+}
+
+.bd-divider-removed {
+  --bd-divider-color: var(--vscode-editorGutter-deletedBackground, #f14c4c);
+}
+
+.bd-divider-modified {
+  --bd-divider-color: var(--vscode-editorGutter-modifiedBackground, #1b81a8);
+}
+
+/* the divider div carries only the border, so opacity fades just the line */
+.bd-divider-staged {
+  opacity: 0.35;
+}
+
 .bd-active-chunk {
   box-shadow: inset 2px 0 0 var(--vscode-focusBorder, #007fd4);
 }

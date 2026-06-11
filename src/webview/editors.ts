@@ -101,6 +101,28 @@ export function buildDiffDecorations(
       }
     }
   }
+  // a chunk absent on this side (pure insertion/deletion) leaves no colored
+  // lines here — mark the boundary with a divider where the connector lands
+  for (const chunk of model.chunks) {
+    const count = side === 'left' ? chunk.leftCount : chunk.rightCount;
+    if (count !== 0) {
+      continue;
+    }
+    const start = side === 'left' ? chunk.leftStart : chunk.rightStart;
+    // hunk-header convention: `start` is the line before the boundary,
+    // 0 meaning a change before the first line
+    const edge = start === 0 ? 'top' : 'bottom';
+    const line = Math.max(1, start);
+    decorations.push({
+      range: new monaco.Range(line, 1, line, 1),
+      options: {
+        isWholeLine: true,
+        className: `bd-divider-${edge} bd-divider-${chunk.kind}${
+          chunk.staged ? ' bd-divider-staged' : ''
+        }`,
+      },
+    });
+  }
   return decorations;
 }
 
