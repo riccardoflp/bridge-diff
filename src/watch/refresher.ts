@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { buildModel } from '../diffBuilder';
+import { refreshPanel } from '../diffBuilder';
 import { Repository } from '../git/api';
 import { GitService } from '../git/gitService';
 import { PanelRegistry } from '../panel/panelRegistry';
@@ -43,10 +43,7 @@ export class Refresher implements vscode.Disposable {
   private async run(): Promise<void> {
     void this.updateContextKey();
     for (const panel of this.registry.all()) {
-      const model = await buildModel(this.git, panel.descriptor, { interactive: false });
-      if (model) {
-        panel.setModel(model);
-      }
+      await refreshPanel(this.git, panel);
     }
   }
 

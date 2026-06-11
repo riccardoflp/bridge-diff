@@ -6,6 +6,8 @@ import { AlignedDiffModel } from './model';
 
 export interface DiffSettings {
   wrap: boolean;
+  /** Drives which chunk actions the webview offers (revert/stage vs unstage). */
+  rightSide: 'worktree' | 'index';
 }
 
 /** The user's active color theme, resolved host-side and loadable by shiki. */
@@ -27,7 +29,7 @@ export type HostMessage =
 export type WebviewMessage =
   | { type: 'ready' }
   | { type: 'currentChunkChanged'; chunkId: number }
-  | { type: 'openAt'; side: 'left' | 'right'; line: number };
-// Phase 2 (named here so the webview toolbar can be built against them):
-//   | { type: 'applyChunk'; chunkId: number }
-//   | { type: 'stageChunk'; chunkId: number }
+  | { type: 'openAt'; side: 'left' | 'right'; line: number }
+  | { type: 'revertChunk'; chunkId: number }
+  | { type: 'stageChunk'; chunkId: number }
+  | { type: 'unstageChunk'; chunkId: number };

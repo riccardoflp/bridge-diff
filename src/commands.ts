@@ -1,5 +1,6 @@
+import * as path from 'path';
 import * as vscode from 'vscode';
-import { buildModel } from './diffBuilder';
+import { buildModel, refreshPanel } from './diffBuilder';
 import { GitService } from './git/gitService';
 import { DiffDescriptor } from './panel/diffPanel';
 import { PanelRegistry } from './panel/panelRegistry';
@@ -21,8 +22,68 @@ export function registerCommands(
     ),
     vscode.commands.registerCommand('bridgeDiff.prevChunk', () =>
       registry.getActive()?.navigate('prev')
+    ),
+    vscode.commands.registerCommand('bridgeDiff.openFile', () =>
+      fileAction(git, registry, 'open')
+    ),
+    vscode.commands.registerCommand('bridgeDiff.stageFile', () =>
+      fileAction(git, registry, 'stage')
+    ),
+    vscode.commands.registerCommand('bridgeDiff.unstageFile', () =>
+      fileAction(git, registry, 'unstage')
+    ),
+    vscode.commands.registerCommand('bridgeDiff.revertFile', () =>
+      fileAction(git, registry, 'discard')
     )
   );
+}
+
+/** Whole-file actions for the panel title bar (parity with the built-in diff editor). */
+async function fileAction(
+  git: GitService,
+  registry: PanelRegistry,
+  kind: 'open' | 'stage' | 'unstage' | 'discard'
+): Promise<void> {
+  const panel = registry.getActive();
+  if (!panel) {
+    return;
+  }
+  const uri = panel.descriptor.fileUri;
+  if (kind === 'open') {
+    void vscode.window.showTextDocument(uri, { preview: false });
+    return;
+  }
+  const repo = await git.getRepository(uri);
+  if (!repo) {
+    return;
+  }
+  try {
+    switch (kind) {
+      case 'stage':
+        await repo.add([uri.fsPath]);
+        break;
+      case 'unstage':
+        await repo.revert([uri.fsPath]);
+        break;
+      case 'discard': {
+        const choice = await vscode.window.showWarningMessage(
+          `Discard all changes in ${path.basename(uri.fsPath)}? This cannot be undone.`,
+          { modal: true },
+          'Discard Changes'
+        );
+        if (choice !== 'Discard Changes') {
+          return;
+        }
+        await repo.clean([uri.fsPath]);
+        break;
+      }
+    }
+    await refreshPanel(git, panel);
+  } catch (error) {
+    void vscode.window.showWarningMessage(
+      `Bridge Diff: ${kind} failed — ${String((error as Error).message ?? error)}`
+    );
+  }
 }
 
 async function openDiff(

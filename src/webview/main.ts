@@ -1,6 +1,6 @@
 import { AlignedDiffModel, DiffChunk } from '../diff/model';
-import { HostMessage, WebviewMessage } from '../diff/protocol';
-import { Connectors } from './connectors';
+import { DiffSettings, HostMessage, WebviewMessage } from '../diff/protocol';
+import { ChunkActionsConfig, Connectors } from './connectors';
 import { setSyntaxTheme, tokenizeFile } from './highlight';
 import { Navigation } from './navigation';
 import { RenderedView, applySyntaxTokens, render, sideText } from './render';
@@ -20,6 +20,7 @@ const scrollSync = new ScrollSync(() => connectors.schedule());
 
 let model: AlignedDiffModel | undefined;
 let view: RenderedView | undefined;
+let settings: DiffSettings | undefined;
 let lineHeight = 18;
 let themeLoaded: Promise<void> = Promise.resolve();
 let highlightRequest = 0;
@@ -38,6 +39,7 @@ window.addEventListener('message', (event: MessageEvent) => {
   const message = event.data as HostMessage;
   switch (message.type) {
     case 'init':
+      settings = message.settings;
       themeLoaded = setSyntaxTheme(message.syntaxTheme);
       apply(message.model, false);
       void highlight();
@@ -67,13 +69,26 @@ function apply(next: AlignedDiffModel, preserveScroll: boolean): void {
   view = render(root, next);
   lineHeight = measureLineHeight(view);
   scrollSync.attach(view.leftPane, view.rightPane, next, lineHeight);
-  connectors.attach(view.gutter, view.leftPane, view.rightPane, next, lineHeight);
+  connectors.attach(view.gutter, view.leftPane, view.rightPane, next, lineHeight, chunkActions());
   navigation.setModel(next);
   if (preserveScroll) {
     scrollSync.setScrollTop(view.leftPane, prevLeft);
     scrollSync.setScrollTop(view.rightPane, prevRight);
   }
   wireOpenAt(view, next);
+}
+
+/** Worktree diffs offer revert + stage per chunk; index diffs offer unstage. */
+function chunkActions(): ChunkActionsConfig | undefined {
+  if (!settings) {
+    return undefined;
+  }
+  const kinds: ChunkActionsConfig['kinds'] =
+    settings.rightSide === 'worktree' ? ['revertChunk', 'stageChunk'] : ['unstageChunk'];
+  return {
+    kinds,
+    onAction: (kind, chunkId) => post({ type: kind, chunkId }),
+  };
 }
 
 function measureLineHeight(current: RenderedView): number {

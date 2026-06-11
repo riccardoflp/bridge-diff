@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { ChunkActions } from './chunkActions';
 import { registerCommands } from './commands';
 import { GitService } from './git/gitService';
 import { PanelRegistry } from './panel/panelRegistry';
@@ -8,7 +9,10 @@ import { Refresher } from './watch/refresher';
 export function activate(context: vscode.ExtensionContext): void {
   const git = new GitService();
   const themes = new ThemeService();
-  const registry = new PanelRegistry(context.extensionUri, themes);
+  const chunkActions = new ChunkActions(git);
+  const registry = new PanelRegistry(context.extensionUri, themes, (panel, message) =>
+    void chunkActions.handle(panel, message.type, message.chunkId)
+  );
   const refresher = new Refresher(git, registry);
 
   context.subscriptions.push(

@@ -29,12 +29,18 @@ word-level intra-line highlights and chunk navigation.
 - Changed files show a diff button in the editor title bar.
 - **Bridge Diff: Open Diff (Index vs HEAD)** compares the staged copy instead.
 
+- **Per-chunk actions** in the center gutter: revert (⟲) and stage (+) for
+  working-tree diffs, unstage (−) for index diffs — hunk-level staging via
+  `git apply --cached`.
+- **File actions** in the panel title bar, like the built-in diff editor:
+  Open File, previous/next change, Stage File, Unstage File, Discard Changes.
+- **Syntax highlighting** that matches your *actual* color theme: the active
+  theme's JSON is resolved host-side (includes merged) and loaded into shiki.
+
 ## Roadmap
 
-- Per-chunk apply/revert arrows in the gutter and hunk-level staging.
 - Local Changes tree view grouped by directory.
 - Compare with arbitrary branch/revision.
-- Syntax highlighting inside the diff panes.
 
 ## Development
 

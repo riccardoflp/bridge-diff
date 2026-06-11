@@ -50,6 +50,30 @@
         "title": "Previous Change",
         "category": "Bridge Diff",
         "icon": "$(arrow-up)"
+      },
+      {
+        "command": "bridgeDiff.openFile",
+        "title": "Open File",
+        "category": "Bridge Diff",
+        "icon": "$(go-to-file)"
+      },
+      {
+        "command": "bridgeDiff.stageFile",
+        "title": "Stage File",
+        "category": "Bridge Diff",
+        "icon": "$(add)"
+      },
+      {
+        "command": "bridgeDiff.unstageFile",
+        "title": "Unstage File",
+        "category": "Bridge Diff",
+        "icon": "$(remove)"
+      },
+      {
+        "command": "bridgeDiff.revertFile",
+        "title": "Discard Changes (Revert File)",
+        "category": "Bridge Diff",
+        "icon": "$(discard)"
       }
     ],
     "menus": {
@@ -70,6 +94,36 @@
           "command": "bridgeDiff.openDiff",
           "when": "config.git.enabled && resourceScheme == file && bridgeDiff.activeFileHasChanges",
           "group": "navigation@-1"
+        },
+        {
+          "command": "bridgeDiff.openFile",
+          "when": "activeWebviewPanelId == bridgeDiff.panel",
+          "group": "navigation@1"
+        },
+        {
+          "command": "bridgeDiff.prevChunk",
+          "when": "activeWebviewPanelId == bridgeDiff.panel",
+          "group": "navigation@2"
+        },
+        {
+          "command": "bridgeDiff.nextChunk",
+          "when": "activeWebviewPanelId == bridgeDiff.panel",
+          "group": "navigation@3"
+        },
+        {
+          "command": "bridgeDiff.stageFile",
+          "when": "activeWebviewPanelId == bridgeDiff.panel && bridgeDiff.activeSide == worktree",
+          "group": "navigation@4"
+        },
+        {
+          "command": "bridgeDiff.revertFile",
+          "when": "activeWebviewPanelId == bridgeDiff.panel && bridgeDiff.activeSide == worktree",
+          "group": "navigation@5"
+        },
+        {
+          "command": "bridgeDiff.unstageFile",
+          "when": "activeWebviewPanelId == bridgeDiff.panel && bridgeDiff.activeSide == index",
+          "group": "navigation@4"
         }
       ],
       "commandPalette": [
@@ -80,6 +134,22 @@
         {
           "command": "bridgeDiff.prevChunk",
           "when": "activeWebviewPanelId == bridgeDiff.panel"
+        },
+        {
+          "command": "bridgeDiff.openFile",
+          "when": "activeWebviewPanelId == bridgeDiff.panel"
+        },
+        {
+          "command": "bridgeDiff.stageFile",
+          "when": "activeWebviewPanelId == bridgeDiff.panel && bridgeDiff.activeSide == worktree"
+        },
+        {
+          "command": "bridgeDiff.unstageFile",
+          "when": "activeWebviewPanelId == bridgeDiff.panel && bridgeDiff.activeSide == index"
+        },
+        {
+          "command": "bridgeDiff.revertFile",
+          "when": "activeWebviewPanelId == bridgeDiff.panel && bridgeDiff.activeSide == worktree"
         }
       ]
     },

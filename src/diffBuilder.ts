@@ -64,6 +64,17 @@ export async function buildModel(
   });
 }
 
+/** Recomputes and pushes the model for an existing panel (refresh/post-action path). */
+export async function refreshPanel(
+  git: GitService,
+  panel: { descriptor: DiffDescriptor; setModel(model: AlignedDiffModel): void }
+): Promise<void> {
+  const model = await buildModel(git, panel.descriptor, { interactive: false });
+  if (model) {
+    panel.setModel(model);
+  }
+}
+
 function looksBinary(text: string): boolean {
   return text.includes('\0');
 }

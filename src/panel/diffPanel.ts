@@ -17,6 +17,11 @@ export function diffKey(d: DiffDescriptor): string {
   return [d.repoRoot, d.fileUri.toString(), d.leftRef, d.rightSide].join('|');
 }
 
+export type ChunkActionMessage = Extract<
+  WebviewMessage,
+  { type: 'revertChunk' | 'stageChunk' | 'unstageChunk' }
+>;
+
 export class DiffPanel {
   static readonly viewType = 'bridgeDiff.panel';
 
@@ -30,6 +35,7 @@ export class DiffPanel {
     extensionUri: vscode.Uri,
     readonly descriptor: DiffDescriptor,
     private readonly themes: ThemeService,
+    private readonly onChunkAction: (panel: DiffPanel, message: ChunkActionMessage) => void,
     onDispose: () => void
   ) {
     const fileName = path.basename(descriptor.fileUri.fsPath);
@@ -58,10 +64,33 @@ export class DiffPanel {
       undefined,
       this.disposables
     );
+    // Drives the editor/title button when-clauses (stage vs unstage actions).
+    this.panel.onDidChangeViewState(
+      (event) => {
+        if (event.webviewPanel.active) {
+          this.setSideContext();
+        }
+      },
+      undefined,
+      this.disposables
+    );
+    this.setSideContext();
   }
 
   get active(): boolean {
     return this.panel.active;
+  }
+
+  get currentModel(): AlignedDiffModel | undefined {
+    return this.model;
+  }
+
+  private setSideContext(): void {
+    void vscode.commands.executeCommand(
+      'setContext',
+      'bridgeDiff.activeSide',
+      this.descriptor.rightSide
+    );
   }
 
   reveal(): void {
@@ -99,7 +128,7 @@ export class DiffPanel {
     this.post({
       type: 'init',
       model: this.model,
-      settings: { wrap: false },
+      settings: { wrap: false, rightSide: this.descriptor.rightSide },
       syntaxTheme: await this.themes.resolveActive(),
     });
   }
@@ -120,6 +149,11 @@ export class DiffPanel {
       }
       case 'currentChunkChanged':
         // Reserved: could mirror "n of m" into the panel title.
+        break;
+      case 'revertChunk':
+      case 'stageChunk':
+      case 'unstageChunk':
+        this.onChunkAction(this, message);
         break;
     }
   }
