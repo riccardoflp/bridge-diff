@@ -1,10 +1,11 @@
 {
   "name": "bridge-diff",
   "displayName": "Bridge Diff",
-  "description": "WebStorm-style side-by-side git diff viewer with center-gutter connectors",
+  "description": "Side-by-side git diff viewer with center-gutter connectors",
   "version": "0.1.0",
   "license": "MIT",
-  "publisher": "RiccardoFilippozzi",
+  "publisher": "Riccardo Filippozzi",
+  "repository": "https://github.com/riccardoflp/bridge-diff",
   "engines": {
     "vscode": "^1.90.0"
   },
