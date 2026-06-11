@@ -216,15 +216,20 @@ function wireKeys(eds: DiffEditors): void {
   }
 }
 
-/** Worktree diffs offer revert + stage per chunk; index diffs offer unstage. */
+/**
+ * Worktree diffs offer revert + stage per chunk (unstage once the chunk is
+ * already in the index); index diffs offer unstage.
+ */
 function chunkActions(): ChunkActionsConfig | undefined {
   if (!settings) {
     return undefined;
   }
-  const kinds: ChunkActionsConfig['kinds'] =
-    settings.rightSide === 'worktree' ? ['revertChunk', 'stageChunk'] : ['unstageChunk'];
+  const side = settings.rightSide;
   return {
-    kinds,
+    kindsFor: (chunk) =>
+      side === 'worktree'
+        ? ['revertChunk', chunk.staged ? 'unstageChunk' : 'stageChunk']
+        : ['unstageChunk'],
     onAction: (kind, chunkId) => post({ type: kind, chunkId }),
   };
 }

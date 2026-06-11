@@ -97,6 +97,21 @@ body {
   border-radius: 2px;
 }
 
+/* staged chunks: faded line backgrounds (the div sits behind the text, so
+   opacity never dims the code itself) */
+.bd-staged {
+  opacity: 0.3;
+}
+
+/* inline spans wrap the text, so fade the background color instead */
+.bd-inline-added.bd-inline-staged {
+  background: color-mix(in srgb, var(--bd-added-text) 35%, transparent);
+}
+
+.bd-inline-removed.bd-inline-staged {
+  background: color-mix(in srgb, var(--bd-removed-text) 35%, transparent);
+}
+
 .bd-active-chunk {
   box-shadow: inset 2px 0 0 var(--vscode-focusBorder, #007fd4);
 }
@@ -130,9 +145,20 @@ body {
   stroke: var(--vscode-editorGutter-modifiedBackground, #1b81a8);
 }
 
+.connector.staged {
+  fill-opacity: 0.07;
+  stroke-opacity: 0.35;
+  stroke-dasharray: 3 2;
+}
+
 .connector.active {
   fill-opacity: 0.4;
   stroke-opacity: 1;
+}
+
+.connector.staged.active {
+  fill-opacity: 0.16;
+  stroke-opacity: 0.7;
 }
 
 /* ── Per-chunk action buttons (revert / stage / unstage) ─────────────── */

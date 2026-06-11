@@ -11,6 +11,10 @@ export function registerCommands(
   registry: PanelRegistry
 ): void {
   context.subscriptions.push(
+    // NOTE: do not registerCommand('git.openChange') here — the id is already
+    // registered by the built-in git extension and a duplicate registration
+    // throws, aborting activation. The default-diff takeover lives in
+    // watch/diffTakeover.ts (tab interception) instead.
     vscode.commands.registerCommand('bridgeDiff.openDiff', (resource?: unknown) =>
       openDiff(git, registry, resource, 'worktree')
     ),

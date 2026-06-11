@@ -1,4 +1,4 @@
-import { AlignedDiffModel } from '../diff/model';
+import { AlignedDiffModel, DiffChunk } from '../diff/model';
 import { sideExtent } from './scrollSync';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -7,7 +7,8 @@ export const GUTTER_WIDTH = 28;
 export type ChunkActionKind = 'revertChunk' | 'stageChunk' | 'unstageChunk';
 
 export interface ChunkActionsConfig {
-  kinds: ChunkActionKind[];
+  /** Per chunk so staged chunks can offer unstage instead of stage. */
+  kindsFor: (chunk: DiffChunk) => ChunkActionKind[];
   onAction: (kind: ChunkActionKind, chunkId: number) => void;
 }
 
@@ -118,33 +119,43 @@ export class Connectors {
       const path = document.createElementNS(SVG_NS, 'path');
       path.setAttribute('d', geniePath(lt, lb, rt, rb));
       path.classList.add('connector', chunk.kind);
+      if (chunk.staged) {
+        path.classList.add('staged');
+        const tooltip = document.createElementNS(SVG_NS, 'title');
+        tooltip.textContent = 'Staged';
+        path.appendChild(tooltip);
+      }
       if (chunk.id === this.activeChunk) {
         path.classList.add('active');
       }
       this.svg.appendChild(path);
-      this.renderActions(chunk.id, (lt + lb + rt + rb) / 4, height);
+      this.renderActions(chunk, (lt + lb + rt + rb) / 4, height);
     }
   }
 
-  private renderActions(chunkId: number, midY: number, height: number): void {
-    if (!this.actions || !this.actionsLayer || this.actions.kinds.length === 0) {
+  private renderActions(chunk: DiffChunk, midY: number, height: number): void {
+    if (!this.actions || !this.actionsLayer) {
       return;
     }
     if (midY < 0 || midY > height) {
       return;
     }
+    const kinds = this.actions.kindsFor(chunk);
+    if (kinds.length === 0) {
+      return;
+    }
     const group = document.createElement('div');
     group.className = 'chunk-actions';
     group.style.top = `${Math.round(midY - 8)}px`;
-    for (const kind of this.actions.kinds) {
+    for (const kind of kinds) {
       const { glyph, title } = ACTION_GLYPHS[kind];
       const button = document.createElement('button');
       button.className = `chunk-btn ${kind}`;
       button.textContent = glyph;
-      button.title = title;
+      button.title = chunk.staged && kind === 'unstageChunk' ? 'Staged — unstage chunk' : title;
       button.addEventListener('click', (event) => {
         event.stopPropagation();
-        this.actions?.onAction(kind, chunkId);
+        this.actions?.onAction(kind, chunk.id);
       });
       group.appendChild(button);
     }

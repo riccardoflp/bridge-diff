@@ -1,0 +1,92 @@
+# AGENTS.md — Bridge Diff
+
+Guida operativa per agenti (e umani) che lavorano su questo repo.
+
+## Cos'è
+
+Estensione VS Code: diff git side-by-side stile WebStorm in una webview custom.
+Due editor **Monaco** (destro editabile) collegati da un gutter centrale con
+connettori SVG "genie" e azioni per chunk (revert / stage / unstage).
+
+## Comandi
+
+```bash
+npm run compile        # tsc host + type-check webview + esbuild bundle + worker
+npm test               # compile + node --test (unit test su computeDiff e patch)
+npm run watch          # tsc -watch (solo host)
+npm run watch:webview  # esbuild --watch (solo bundle webview)
+npx vsce package       # genera il .vsix
+```
+
+Debug: **F5** (Extension Development Host). Repo di prova con tutti i casi di
+diff: `../bridge-diff-playground` (sample.ts modificato, untracked.ts,
+staged.ts con index ≠ worktree ≠ HEAD).
+Modifiche solo-webview: ricompila e "Developer: Reload Webviews" nel dev host.
+
+## Architettura (due mondi, un protocollo)
+
+```
+src/
+├── extension.ts            # activate(): wiring di tutto
+├── commands.ts             # comandi: openDiff/openDiffStaged/nav/file actions
+├── diffBuilder.ts          # buildModel + refreshPanel (guard binari/file enormi)
+├── chunkActions.ts         # revert (WorkspaceEdit) / stage / unstage per chunk
+├── diff/                   # PURO: niente import vscode, testabile con node --test
+│   ├── model.ts            # AlignedDiffModel: rows (con filler) + chunks
+│   ├── computeDiff.ts      # jsdiff → modello (word-diff con guard 65%)
+│   ├── patch.ts            # chunk → patch unified zero-context per git apply
+│   └── protocol.ts         # messaggi host⇄webview (condiviso, niente vscode)
+├── git/
+│   ├── api.d.ts            # typings vendorate dal tag release/1.90 di vscode
+│   ├── gitService.ts       # repo.show per ref ('' = index), contenuti worktree
+│   └── gitCli.ts           # spawn git apply --cached --unidiff-zero [-R]
+├── panel/                  # DiffPanel (webview, CSP, messaggi) + registry dedupe
+├── theme/themeService.ts   # tema attivo → JSON (include risolti, nome slug)
+├── watch/
+│   ├── refresher.ts        # refresh debounced 250ms + context key
+│   └── diffTakeover.ts     # intercetta i tab diff nativi e apre Bridge Diff
+└── webview/                # bundlato da esbuild (esm+splitting), tsconfig proprio
+    ├── main.ts             # orchestrazione: init/update/theme, edit sync
+    ├── editors.ts          # 2 istanze Monaco + decorazioni diff
+    ├── highlight.ts        # shiki (JS engine) → shikiToMonaco col tema reale
+    ├── scrollSync.ts       # mapping piecewise-linear ancorato ai chunk
+    ├── connectors.ts       # SVG genie nel gutter + bottoni azioni per chunk
+    ├── navigation.ts       # indice chunk corrente (side effect in main)
+    └── render.ts           # layout statico + sideText(model, side)
+```
+
+Flusso dati: git → `computeDiff` → `AlignedDiffModel` → postMessage → webview.
+Editing: Monaco destro → debounce 200ms → `{type:'edit', text}` → WorkspaceEdit
+→ onDidChangeTextDocument → rebuild → `update` → webview (guard `localDirty`
+per non sovrascrivere i tasti in volo).
+
+## Gotcha noti (non rifare questi errori)
+
+- **`@types/vscode` è pinnato a 1.90.0** (= engines). Versioni più nuove fanno
+  fallire `vsce package`.
+- **Monaco 0.55**: gli import richiedono l'estensione esplicita
+  (`monaco-editor/esm/vs/editor/editor.api.js`) perché exports è `"./*": "./*"`.
+  `codicon.css` va importato a mano (il core non lo fa più) e il `.ttf` esce
+  dal bundle via `--loader:.ttf=file`.
+- **Worker Monaco**: non si crea cross-origin da una webview → bundle iife
+  separato (`editor.worker.js`) caricato via blob + `importScripts` (CSP
+  `worker-src blob:`). Se fallisce, Monaco fa fallback sul main thread.
+- **Non registrare `git.openChange`** (o altri comandi di estensioni esistenti):
+  la doppia registrazione lancia e abortisce `activate()`. Il takeover del diff
+  di default si fa intercettando i tab (`watch/diffTakeover.ts`).
+- **`git apply` per hunk richiede `--unidiff-zero`** (le nostre patch non hanno
+  righe di contesto). Stage di un file untracked = `repo.add` (niente index entry).
+- **Nomi tema Monaco**: solo `[a-zA-Z0-9-]` → `themeService` slugifica il nome.
+- **`src/diff/` deve restare puro**: niente `import vscode`, è condiviso con la
+  webview e coperto da `node --test`.
+- I file possono essere CRLF: `computeDiff` normalizza a LF per il display;
+  `diffPanel.applyWebviewEdit` riconverte rispettando l'EOL del documento.
+
+## Convenzioni
+
+- TypeScript strict, commonjs/ES2020 per l'host (come run-my-tasks); la webview
+  ha il suo tsconfig (`noEmit`, DOM, Bundler resolution).
+- Test: `node --test` su `out/test/**` — niente harness VS Code.
+- Colori solo via `--vscode-*` CSS vars (+ fallback); tema sintassi dal JSON
+  del tema attivo, fallback Dark+/Light+.
+- Commit footer: vedi convenzioni del repo (Co-Authored-By quando generato).

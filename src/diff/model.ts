@@ -43,6 +43,11 @@ export interface DiffChunk {
   leftCount: number;
   rightStart: number;
   rightCount: number;
+  /**
+   * True when the index already contains this change (worktree views only).
+   * Drives the dimmed rendering and the stage→unstage button swap.
+   */
+  staged?: boolean;
 }
 
 export interface AlignedDiffModel {

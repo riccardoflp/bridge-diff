@@ -4,6 +4,7 @@ import { registerCommands } from './commands';
 import { GitService } from './git/gitService';
 import { PanelRegistry } from './panel/panelRegistry';
 import { ThemeService } from './theme/themeService';
+import { DiffTakeover } from './watch/diffTakeover';
 import { Refresher } from './watch/refresher';
 
 export function activate(context: vscode.ExtensionContext): void {
@@ -18,6 +19,7 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     registry,
     refresher,
+    new DiffTakeover(),
     vscode.window.onDidChangeActiveColorTheme(() => {
       for (const panel of registry.all()) {
         void panel.refreshTheme();

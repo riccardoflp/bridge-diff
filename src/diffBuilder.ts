@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { computeDiff } from './diff/computeDiff';
 import { AlignedDiffModel } from './diff/model';
+import { markStagedChunks } from './diff/staged';
 import { GitService } from './git/gitService';
 import { DiffDescriptor } from './panel/diffPanel';
 
@@ -26,9 +27,13 @@ export async function buildModel(
     return undefined;
   }
 
-  const [oldText, newText] = await Promise.all([
+  const [oldText, newText, indexText] = await Promise.all([
     git.getContent(repo, descriptor.fileUri, { ref: descriptor.leftRef }),
     git.getContent(repo, descriptor.fileUri, descriptor.rightSide),
+    // worktree views also need the index to mark already-staged chunks
+    descriptor.rightSide === 'worktree'
+      ? git.getContent(repo, descriptor.fileUri, 'index')
+      : Promise.resolve(undefined),
   ]);
   // Missing on one side = untracked (no HEAD version) or deleted (no worktree
   // version): diff against empty so the whole file shows as added/removed.
@@ -54,7 +59,7 @@ export async function buildModel(
   }
 
   const rightLabel = descriptor.rightSide === 'worktree' ? 'Working Tree' : 'Index';
-  return computeDiff({
+  const model = computeDiff({
     oldText: left,
     newText: right,
     leftLabel: descriptor.leftRef,
@@ -62,6 +67,10 @@ export async function buildModel(
     languageId: await detectLanguageId(descriptor.fileUri),
     filePath: vscode.workspace.asRelativePath(descriptor.fileUri),
   });
+  if (descriptor.rightSide === 'worktree') {
+    markStagedChunks(model, indexText, right);
+  }
+  return model;
 }
 
 /** Recomputes and pushes the model for an existing panel (refresh/post-action path). */

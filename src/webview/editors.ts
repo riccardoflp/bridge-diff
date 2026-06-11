@@ -82,16 +82,21 @@ export function buildDiffDecorations(
     if (cell.kind === 'filler' || cell.kind === 'context' || cell.lineNumber === undefined) {
       continue;
     }
+    // staged chunks render dimmed so pending work stands out
+    const staged = row.chunkId !== undefined && model.chunks[row.chunkId]?.staged === true;
     const line = cell.lineNumber;
     decorations.push({
       range: new monaco.Range(line, 1, line, 1),
-      options: { isWholeLine: true, className: `bd-line-${cell.kind}` },
+      options: {
+        isWholeLine: true,
+        className: `bd-line-${cell.kind}${staged ? ' bd-staged' : ''}`,
+      },
     });
     for (const [start, end] of cell.highlights ?? []) {
       if (end > start) {
         decorations.push({
           range: new monaco.Range(line, start + 1, line, end + 1),
-          options: { inlineClassName: inlineClass },
+          options: { inlineClassName: `${inlineClass}${staged ? ' bd-inline-staged' : ''}` },
         });
       }
     }

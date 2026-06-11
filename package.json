@@ -153,6 +153,16 @@
         }
       ]
     },
+    "configuration": {
+      "title": "Bridge Diff",
+      "properties": {
+        "bridgeDiff.interceptGitOpenChange": {
+          "type": "boolean",
+          "default": true,
+          "description": "Use Bridge Diff instead of VS Code's built-in diff editor when clicking files in the Source Control panel."
+        }
+      }
+    },
     "keybindings": [
       {
         "command": "bridgeDiff.nextChunk",
