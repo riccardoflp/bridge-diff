@@ -9,6 +9,7 @@
   "engines": {
     "vscode": "^1.90.0"
   },
+  "icon": "resources/icon/icon.png",
   "categories": [
     "Other",
     "SCM Providers"

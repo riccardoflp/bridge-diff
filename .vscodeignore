@@ -11,3 +11,4 @@ tsconfig.json
 AGENTS.md
 PLAN.md
 resources/**
+!resources/icon/icon.png
