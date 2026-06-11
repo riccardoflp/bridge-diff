@@ -1,0 +1,206 @@
+:root {
+  --bd-added-line: var(--vscode-diffEditor-insertedLineBackground, rgba(155, 185, 85, 0.2));
+  --bd-removed-line: var(--vscode-diffEditor-removedLineBackground, rgba(255, 0, 0, 0.2));
+  --bd-added-text: var(--vscode-diffEditor-insertedTextBackground, rgba(155, 185, 85, 0.35));
+  --bd-removed-text: var(--vscode-diffEditor-removedTextBackground, rgba(255, 0, 0, 0.35));
+  --bd-modified-line: color-mix(
+    in srgb,
+    var(--vscode-editorGutter-modifiedBackground, #1b81a8) 14%,
+    transparent
+  );
+  --bd-gutter-width: 28px;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  color: var(--vscode-editor-foreground);
+  background: var(--vscode-editor-background);
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+/* ── Header with pane labels ─────────────────────────────────────────── */
+
+.header {
+  display: flex;
+  flex: 0 0 auto;
+  font-family: var(--vscode-font-family);
+  font-size: 12px;
+  border-bottom: 1px solid var(--vscode-panel-border, rgba(128, 128, 128, 0.35));
+}
+
+.pane-label {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 4px 8px;
+  opacity: 0.8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gutter-spacer {
+  flex: 0 0 var(--bd-gutter-width);
+}
+
+/* ── Two independent panes bridged by the gutter ─────────────────────── */
+
+.diff-body {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.pane {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: auto;
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: var(--vscode-editor-font-size, 13px);
+}
+
+/* One visible vertical scrollbar (far right); the left pane stays wheel-
+   scrollable but hides its own to avoid a bar in the middle of the diff. */
+.pane.left::-webkit-scrollbar:vertical {
+  width: 0;
+}
+
+.gutter {
+  flex: 0 0 var(--bd-gutter-width);
+  position: relative;
+  overflow: hidden;
+}
+
+/* ── Lines ───────────────────────────────────────────────────────────── */
+
+.line {
+  display: flex;
+  white-space: pre;
+  line-height: 1.5;
+  /* Explicit height keeps empty lines as tall as text lines. */
+  height: 1.5em;
+  width: max-content;
+  min-width: 100%;
+}
+
+.line-number {
+  flex: 0 0 auto;
+  width: 5ch;
+  padding-right: 1ch;
+  text-align: right;
+  color: var(--vscode-editorLineNumber-foreground, #858585);
+  user-select: none;
+}
+
+.line-content {
+  flex: 0 0 auto;
+}
+
+.line.added {
+  background: var(--bd-added-line);
+}
+
+.line.removed {
+  background: var(--bd-removed-line);
+}
+
+.line.modified {
+  background: var(--bd-modified-line);
+}
+
+.hl-added {
+  background: var(--bd-added-text);
+  border-radius: 2px;
+}
+
+.hl-removed {
+  background: var(--bd-removed-text);
+  border-radius: 2px;
+}
+
+.line.active-chunk {
+  box-shadow: inset 2px 0 0 var(--vscode-focusBorder, #007fd4);
+}
+
+/* ── Center gutter connectors ────────────────────────────────────────── */
+
+.connector-layer {
+  display: block;
+  position: absolute;
+  inset: 0;
+}
+
+.connector {
+  fill-opacity: 0.22;
+  stroke-width: 1;
+  stroke-opacity: 0.55;
+}
+
+.connector.added {
+  fill: var(--vscode-editorGutter-addedBackground, #487e02);
+  stroke: var(--vscode-editorGutter-addedBackground, #487e02);
+}
+
+.connector.removed {
+  fill: var(--vscode-editorGutter-deletedBackground, #f14c4c);
+  stroke: var(--vscode-editorGutter-deletedBackground, #f14c4c);
+}
+
+.connector.modified {
+  fill: var(--vscode-editorGutter-modifiedBackground, #1b81a8);
+  stroke: var(--vscode-editorGutter-modifiedBackground, #1b81a8);
+}
+
+.connector.active {
+  fill-opacity: 0.4;
+  stroke-opacity: 1;
+}
+
+/* ── Floating navigation toolbar ─────────────────────────────────────── */
+
+.toolbar {
+  position: fixed;
+  top: 34px;
+  right: 16px;
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  padding: 3px 6px;
+  border-radius: 4px;
+  background: var(--vscode-editorWidget-background, #252526);
+  border: 1px solid var(--vscode-editorWidget-border, rgba(128, 128, 128, 0.35));
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  font-family: var(--vscode-font-family);
+  font-size: 12px;
+  z-index: 10;
+}
+
+.toolbar button {
+  border: none;
+  padding: 2px 6px;
+  border-radius: 3px;
+  cursor: pointer;
+  color: var(--vscode-foreground);
+  background: transparent;
+}
+
+.toolbar button:hover {
+  background: var(--vscode-toolbar-hoverBackground, rgba(128, 128, 128, 0.2));
+}
+
+.toolbar .counter {
+  min-width: 5ch;
+  text-align: center;
+  opacity: 0.9;
+}

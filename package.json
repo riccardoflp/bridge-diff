@@ -1,0 +1,123 @@
+{
+  "name": "bridge-diff",
+  "displayName": "Bridge Diff",
+  "description": "WebStorm-style side-by-side git diff viewer with center-gutter connectors",
+  "version": "0.1.0",
+  "license": "MIT",
+  "publisher": "RiccardoFilippozzi",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other",
+    "SCM Providers"
+  ],
+  "keywords": [
+    "diff",
+    "git",
+    "side-by-side",
+    "webstorm",
+    "compare"
+  ],
+  "extensionDependencies": [
+    "vscode.git"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "bridgeDiff.openDiff",
+        "title": "Open Diff (Working Tree vs HEAD)",
+        "category": "Bridge Diff",
+        "icon": "$(diff)"
+      },
+      {
+        "command": "bridgeDiff.openDiffStaged",
+        "title": "Open Diff (Index vs HEAD)",
+        "category": "Bridge Diff"
+      },
+      {
+        "command": "bridgeDiff.nextChunk",
+        "title": "Next Change",
+        "category": "Bridge Diff",
+        "icon": "$(arrow-down)"
+      },
+      {
+        "command": "bridgeDiff.prevChunk",
+        "title": "Previous Change",
+        "category": "Bridge Diff",
+        "icon": "$(arrow-up)"
+      }
+    ],
+    "menus": {
+      "scm/resourceState/context": [
+        {
+          "command": "bridgeDiff.openDiff",
+          "when": "scmProvider == git",
+          "group": "navigation@1"
+        },
+        {
+          "command": "bridgeDiff.openDiffStaged",
+          "when": "scmProvider == git",
+          "group": "navigation@2"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "bridgeDiff.openDiff",
+          "when": "config.git.enabled && resourceScheme == file && bridgeDiff.activeFileHasChanges",
+          "group": "navigation@-1"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "bridgeDiff.nextChunk",
+          "when": "activeWebviewPanelId == bridgeDiff.panel"
+        },
+        {
+          "command": "bridgeDiff.prevChunk",
+          "when": "activeWebviewPanelId == bridgeDiff.panel"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "bridgeDiff.nextChunk",
+        "key": "f7",
+        "when": "activeWebviewPanelId == bridgeDiff.panel"
+      },
+      {
+        "command": "bridgeDiff.prevChunk",
+        "key": "shift+f7",
+        "when": "activeWebviewPanelId == bridgeDiff.panel"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./ && tsc -p src/webview && npm run bundle:webview",
+    "bundle:webview": "esbuild src/webview/main.ts --bundle --outdir=out/webview --format=esm --splitting --chunk-names=chunks/[name]-[hash] --sourcemap",
+    "watch": "tsc -watch -p ./",
+    "watch:webview": "esbuild src/webview/main.ts --bundle --outdir=out/webview --format=esm --splitting --chunk-names=chunks/[name]-[hash] --sourcemap --watch",
+    "test": "npm run compile && node --test \"out/test/**/*.test.js\"",
+    "package": "vsce package"
+  },
+  "dependencies": {
+    "diff": "^7.0.0"
+  },
+  "devDependencies": {
+    "@shikijs/engine-javascript": "^4.2.0",
+    "@shikijs/langs": "^4.2.0",
+    "@shikijs/themes": "^4.2.0",
+    "@types/diff": "^7.0.0",
+    "@types/node": "20.x",
+    "@types/vscode": "1.90.0",
+    "@vscode/vsce": "^3.0.0",
+    "esbuild": "^0.24.0",
+    "shiki": "^4.2.0",
+    "typescript": "^5.4.0"
+  }
+}

@@ -1,0 +1,27 @@
+import * as vscode from 'vscode';
+import { registerCommands } from './commands';
+import { GitService } from './git/gitService';
+import { PanelRegistry } from './panel/panelRegistry';
+import { ThemeService } from './theme/themeService';
+import { Refresher } from './watch/refresher';
+
+export function activate(context: vscode.ExtensionContext): void {
+  const git = new GitService();
+  const themes = new ThemeService();
+  const registry = new PanelRegistry(context.extensionUri, themes);
+  const refresher = new Refresher(git, registry);
+
+  context.subscriptions.push(
+    registry,
+    refresher,
+    vscode.window.onDidChangeActiveColorTheme(() => {
+      for (const panel of registry.all()) {
+        void panel.refreshTheme();
+      }
+    })
+  );
+  registerCommands(context, git, registry);
+  void refresher.init();
+}
+
+export function deactivate(): void {}
