@@ -218,10 +218,10 @@ function wireKeys(eds: DiffEditors): void {
 
 /**
  * Worktree diffs offer revert + stage per chunk (unstage once the chunk is
- * already in the index); index diffs offer unstage.
+ * already in the index); index diffs offer unstage; ref diffs are read-only.
  */
 function chunkActions(): ChunkActionsConfig | undefined {
-  if (!settings) {
+  if (!settings || settings.rightSide === 'ref') {
     return undefined;
   }
   const side = settings.rightSide;

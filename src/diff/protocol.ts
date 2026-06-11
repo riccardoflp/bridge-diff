@@ -6,8 +6,8 @@ import { AlignedDiffModel } from './model';
 
 export interface DiffSettings {
   wrap: boolean;
-  /** Drives which chunk actions the webview offers (revert/stage vs unstage). */
-  rightSide: 'worktree' | 'index';
+  /** Drives which chunk actions the webview offers (revert/stage vs unstage vs none). */
+  rightSide: 'worktree' | 'index' | 'ref';
 }
 
 /** The user's active color theme, resolved host-side and loadable by shiki. */

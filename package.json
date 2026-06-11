@@ -161,7 +161,7 @@
         "bridgeDiff.interceptGitOpenChange": {
           "type": "boolean",
           "default": true,
-          "description": "Use Bridge Diff instead of VS Code's built-in diff editor when clicking files in the Source Control panel."
+          "description": "Use Bridge Diff instead of VS Code's built-in diff editor for git diffs opened from the Source Control panel, the commit graph, or GitLens."
         }
       }
     },

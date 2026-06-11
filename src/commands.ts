@@ -38,6 +38,11 @@ export function registerCommands(
     ),
     vscode.commands.registerCommand('bridgeDiff.revertFile', () =>
       fileAction(git, registry, 'discard')
+    ),
+    vscode.commands.registerCommand(
+      'bridgeDiff.openDiffRefs',
+      (args: { fileUri: vscode.Uri; leftRef: string; rightRef?: string }) =>
+        openDiffAtRefs(git, registry, args)
     )
   );
 }
@@ -112,6 +117,36 @@ async function openDiff(
     fileUri: uri,
     leftRef: 'HEAD',
     rightSide,
+  };
+  const model = await buildModel(git, descriptor, { interactive: true });
+  if (!model) {
+    return;
+  }
+  const panel = registry.getOrCreate(descriptor);
+  panel.setModel(model);
+  panel.reveal();
+}
+
+/**
+ * Opens a read-only two-ref diff, or a custom-leftRef vs worktree diff when
+ * rightRef is omitted. Called by DiffTakeover for GitLens-originated tabs.
+ */
+async function openDiffAtRefs(
+  git: GitService,
+  registry: PanelRegistry,
+  args: { fileUri: vscode.Uri; leftRef: string; rightRef?: string }
+): Promise<void> {
+  const repo = await git.getRepository(args.fileUri);
+  if (!repo) {
+    void vscode.window.showWarningMessage('Bridge Diff: file is not part of a git repository.');
+    return;
+  }
+  const descriptor: DiffDescriptor = {
+    repoRoot: repo.rootUri.fsPath,
+    fileUri: args.fileUri,
+    leftRef: args.leftRef,
+    rightSide: 'worktree',
+    rightRef: args.rightRef,
   };
   const model = await buildModel(git, descriptor, { interactive: true });
   if (!model) {

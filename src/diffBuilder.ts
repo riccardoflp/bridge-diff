@@ -29,9 +29,9 @@ export async function buildModel(
 
   const [oldText, newText, indexText] = await Promise.all([
     git.getContent(repo, descriptor.fileUri, { ref: descriptor.leftRef }),
-    git.getContent(repo, descriptor.fileUri, descriptor.rightSide),
+    git.getContent(repo, descriptor.fileUri, descriptor.rightRef ? { ref: descriptor.rightRef } : descriptor.rightSide),
     // worktree views also need the index to mark already-staged chunks
-    descriptor.rightSide === 'worktree'
+    descriptor.rightSide === 'worktree' && !descriptor.rightRef
       ? git.getContent(repo, descriptor.fileUri, 'index')
       : Promise.resolve(undefined),
   ]);
@@ -58,7 +58,9 @@ export async function buildModel(
     }
   }
 
-  const rightLabel = descriptor.rightSide === 'worktree' ? 'Working Tree' : 'Index';
+  const rightLabel = descriptor.rightRef
+    ? descriptor.rightRef.slice(0, 9)
+    : descriptor.rightSide === 'worktree' ? 'Working Tree' : 'Index';
   const model = computeDiff({
     oldText: left,
     newText: right,
@@ -67,7 +69,7 @@ export async function buildModel(
     languageId: await detectLanguageId(descriptor.fileUri),
     filePath: vscode.workspace.asRelativePath(descriptor.fileUri),
   });
-  if (descriptor.rightSide === 'worktree') {
+  if (descriptor.rightSide === 'worktree' && !descriptor.rightRef) {
     markStagedChunks(model, indexText, right);
   }
   return model;

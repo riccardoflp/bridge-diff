@@ -7,14 +7,16 @@ import { ThemeService } from '../theme/themeService';
 export interface DiffDescriptor {
   repoRoot: string;
   fileUri: vscode.Uri;
-  /** Left side of the comparison, e.g. 'HEAD' or a branch/commit. */
+  /** Left side of the comparison, e.g. 'HEAD' or a commit SHA. */
   leftRef: string;
-  /** Right side: the live file or the staged copy. */
+  /** Right side: the live file or the staged copy. Ignored when rightRef is set. */
   rightSide: 'worktree' | 'index';
+  /** When set, both sides are historical refs (read-only view). */
+  rightRef?: string;
 }
 
 export function diffKey(d: DiffDescriptor): string {
-  return [d.repoRoot, d.fileUri.toString(), d.leftRef, d.rightSide].join('|');
+  return [d.repoRoot, d.fileUri.toString(), d.leftRef, d.rightRef ?? d.rightSide].join('|');
 }
 
 export type ChunkActionMessage = Extract<
@@ -39,10 +41,13 @@ export class DiffPanel {
     onDispose: () => void
   ) {
     const fileName = path.basename(descriptor.fileUri.fsPath);
-    const rightLabel = descriptor.rightSide === 'worktree' ? 'Working Tree' : 'Index';
+    const rightLabel = descriptor.rightRef
+      ? abbrevRef(descriptor.rightRef)
+      : descriptor.rightSide === 'worktree' ? 'Working Tree' : 'Index';
+    const leftLabel = descriptor.rightRef ? abbrevRef(descriptor.leftRef) : descriptor.leftRef;
     this.panel = vscode.window.createWebviewPanel(
       DiffPanel.viewType,
-      `${fileName} (${descriptor.leftRef} ↔ ${rightLabel})`,
+      `${fileName} (${leftLabel} ↔ ${rightLabel})`,
       vscode.ViewColumn.Active,
       {
         enableScripts: true,
@@ -89,7 +94,7 @@ export class DiffPanel {
     void vscode.commands.executeCommand(
       'setContext',
       'bridgeDiff.activeSide',
-      this.descriptor.rightSide
+      this.descriptor.rightRef ? 'ref' : this.descriptor.rightSide
     );
   }
 
@@ -128,7 +133,7 @@ export class DiffPanel {
     this.post({
       type: 'init',
       model: this.model,
-      settings: { wrap: false, rightSide: this.descriptor.rightSide },
+      settings: { wrap: false, rightSide: this.descriptor.rightRef ? 'ref' : this.descriptor.rightSide },
       syntaxTheme: await this.themes.resolveActive(),
     });
   }
@@ -168,7 +173,7 @@ export class DiffPanel {
 
   /** In-place edit from the Monaco pane: sync into the real document (kept dirty). */
   private async applyWebviewEdit(text: string): Promise<void> {
-    if (this.descriptor.rightSide !== 'worktree') {
+    if (this.descriptor.rightSide !== 'worktree' || this.descriptor.rightRef) {
       return;
     }
     const document = await vscode.workspace.openTextDocument(this.descriptor.fileUri);
@@ -226,4 +231,8 @@ export class DiffPanel {
 function makeNonce(): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   return Array.from({ length: 32 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+}
+
+function abbrevRef(ref: string): string {
+  return ref.length > 9 ? ref.slice(0, 9) : ref;
 }
