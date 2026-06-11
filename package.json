@@ -169,9 +169,9 @@
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./ && tsc -p src/webview && npm run bundle:webview",
-    "bundle:webview": "esbuild src/webview/main.ts --bundle --outdir=out/webview --format=esm --splitting --chunk-names=chunks/[name]-[hash] --sourcemap",
+    "bundle:webview": "esbuild src/webview/main.ts --bundle --outdir=out/webview --format=esm --splitting --chunk-names=chunks/[name]-[hash] --loader:.ttf=file --sourcemap && esbuild node_modules/monaco-editor/esm/vs/editor/editor.worker.js --bundle --format=iife --outfile=out/webview/editor.worker.js --minify",
     "watch": "tsc -watch -p ./",
-    "watch:webview": "esbuild src/webview/main.ts --bundle --outdir=out/webview --format=esm --splitting --chunk-names=chunks/[name]-[hash] --sourcemap --watch",
+    "watch:webview": "esbuild src/webview/main.ts --bundle --outdir=out/webview --format=esm --splitting --chunk-names=chunks/[name]-[hash] --loader:.ttf=file --sourcemap --watch",
     "test": "npm run compile && node --test \"out/test/**/*.test.js\"",
     "package": "vsce package"
   },
@@ -181,12 +181,14 @@
   "devDependencies": {
     "@shikijs/engine-javascript": "^4.2.0",
     "@shikijs/langs": "^4.2.0",
+    "@shikijs/monaco": "^4.2.0",
     "@shikijs/themes": "^4.2.0",
     "@types/diff": "^7.0.0",
     "@types/node": "20.x",
     "@types/vscode": "1.90.0",
     "@vscode/vsce": "^3.0.0",
     "esbuild": "^0.24.0",
+    "monaco-editor": "^0.55.1",
     "shiki": "^4.2.0",
     "typescript": "^5.4.0"
   }

@@ -28,6 +28,16 @@ export class Refresher implements vscode.Disposable {
     this.disposables.push(
       api.onDidOpenRepository(hookRepo),
       vscode.workspace.onDidSaveTextDocument(() => this.schedule()),
+      // live diff while typing (incl. echoes of webview edits): only for files
+      // that actually have an open diff panel
+      vscode.workspace.onDidChangeTextDocument((event) => {
+        const changed = event.document.uri.toString();
+        if (
+          this.registry.all().some((panel) => panel.descriptor.fileUri.toString() === changed)
+        ) {
+          this.schedule();
+        }
+      }),
       vscode.window.onDidChangeActiveTextEditor(() => void this.updateContextKey())
     );
     void this.updateContextKey();

@@ -27,8 +27,8 @@ const ACTION_GLYPHS: Record<ChunkActionKind, { glyph: string; title: string }> =
 export class Connectors {
   private model: AlignedDiffModel | undefined;
   private gutter: HTMLElement | undefined;
-  private leftPane: HTMLElement | undefined;
-  private rightPane: HTMLElement | undefined;
+  private getLeftScroll: (() => number) | undefined;
+  private getRightScroll: (() => number) | undefined;
   private svg: SVGSVGElement | undefined;
   private actionsLayer: HTMLElement | undefined;
   private actions: ChunkActionsConfig | undefined;
@@ -39,15 +39,15 @@ export class Connectors {
 
   attach(
     gutter: HTMLElement,
-    leftPane: HTMLElement,
-    rightPane: HTMLElement,
+    getLeftScroll: () => number,
+    getRightScroll: () => number,
     model: AlignedDiffModel,
     lineHeight: number,
     actions: ChunkActionsConfig | undefined
   ): void {
     this.gutter = gutter;
-    this.leftPane = leftPane;
-    this.rightPane = rightPane;
+    this.getLeftScroll = getLeftScroll;
+    this.getRightScroll = getRightScroll;
     this.model = model;
     this.lineHeight = lineHeight;
     this.actions = actions;
@@ -81,7 +81,7 @@ export class Connectors {
   }
 
   private redraw(): void {
-    if (!this.svg || !this.gutter || !this.model || !this.leftPane || !this.rightPane) {
+    if (!this.svg || !this.gutter || !this.model || !this.getLeftScroll || !this.getRightScroll) {
       return;
     }
     const height = this.gutter.clientHeight;
@@ -93,8 +93,8 @@ export class Connectors {
       this.actionsLayer.textContent = '';
     }
 
-    const leftScroll = this.leftPane.scrollTop;
-    const rightScroll = this.rightPane.scrollTop;
+    const leftScroll = this.getLeftScroll();
+    const rightScroll = this.getRightScroll();
 
     for (const chunk of this.model.chunks) {
       let [lt, lb] = sideExtent(chunk.leftStart, chunk.leftCount, this.lineHeight);

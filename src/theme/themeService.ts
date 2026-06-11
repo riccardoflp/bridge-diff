@@ -41,9 +41,11 @@ export class ThemeService {
       }
       const raw = await loadThemeWithIncludes(file);
       const type: SyntaxTheme['type'] = entry.uiTheme === 'vs' ? 'light' : 'dark';
-      raw['name'] = name;
+      // Monaco theme names only allow [a-zA-Z0-9-]; slugify once here.
+      const slug = name.replace(/[^a-zA-Z0-9-]+/g, '-');
+      raw['name'] = slug;
       raw['type'] = type;
-      return { name, type, raw };
+      return { name: slug, type, raw };
     }
     return undefined;
   }

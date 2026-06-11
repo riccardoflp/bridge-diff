@@ -155,7 +155,36 @@ export class DiffPanel {
       case 'unstageChunk':
         this.onChunkAction(this, message);
         break;
+      case 'edit':
+        void this.applyWebviewEdit(message.text);
+        break;
+      case 'saveFile':
+        void vscode.workspace
+          .openTextDocument(this.descriptor.fileUri)
+          .then((document) => document.save());
+        break;
     }
+  }
+
+  /** In-place edit from the Monaco pane: sync into the real document (kept dirty). */
+  private async applyWebviewEdit(text: string): Promise<void> {
+    if (this.descriptor.rightSide !== 'worktree') {
+      return;
+    }
+    const document = await vscode.workspace.openTextDocument(this.descriptor.fileUri);
+    const current = document.getText();
+    if (current.replace(/\r\n/g, '\n') === text) {
+      return;
+    }
+    // the webview works in LF; preserve the document's EOL style
+    const finalText = document.eol === vscode.EndOfLine.CRLF ? text.replace(/\n/g, '\r\n') : text;
+    const edit = new vscode.WorkspaceEdit();
+    edit.replace(
+      this.descriptor.fileUri,
+      new vscode.Range(new vscode.Position(0, 0), document.positionAt(current.length)),
+      finalText
+    );
+    await vscode.workspace.applyEdit(edit);
   }
 
   private post(message: HostMessage): void {
@@ -170,20 +199,24 @@ export class DiffPanel {
     const styleUri = webview.asWebviewUri(
       vscode.Uri.joinPath(extensionUri, 'out', 'webview', 'main.css')
     );
+    const workerUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(extensionUri, 'out', 'webview', 'editor.worker.js')
+    );
     const nonce = makeNonce();
     // script-src includes cspSource so the module entry can import() its
-    // esbuild-split chunks (lazy shiki grammars/themes).
+    // esbuild-split chunks (lazy shiki grammars/themes) and so Monaco's blob
+    // worker can importScripts() its bundled code; worker-src allows the blob.
     return /* html */ `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta http-equiv="Content-Security-Policy"
-        content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}' ${webview.cspSource}; img-src ${webview.cspSource};">
+        content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}' ${webview.cspSource}; worker-src blob:; font-src ${webview.cspSource}; img-src ${webview.cspSource} data:;">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="${styleUri}">
 </head>
 <body>
-  <div id="app"></div>
+  <div id="app" data-worker="${workerUri}"></div>
   <script type="module" nonce="${nonce}" src="${scriptUri}"></script>
 </body>
 </html>`;

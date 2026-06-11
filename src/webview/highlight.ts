@@ -1,20 +1,18 @@
 import { createJavaScriptRegexEngine } from '@shikijs/engine-javascript';
-import {
-  createHighlighterCore,
-  type HighlighterCore,
-  type ThemedToken,
-} from 'shiki/core';
+import { shikiToMonaco } from '@shikijs/monaco';
+import type * as monacoApi from 'monaco-editor/esm/vs/editor/editor.api.js';
+import { createHighlighterCore, type HighlighterCore } from 'shiki/core';
 import { SyntaxTheme } from '../diff/protocol';
 
 /**
- * Thin wrapper around shiki: JavaScript regex engine (no WASM, CSP-friendly),
- * languages loaded lazily as esbuild-split chunks, theme = the user's real
- * color theme resolved host-side, with Dark+/Light+ as fallback.
+ * Shiki (JavaScript regex engine, no WASM) drives Monaco's tokenization via
+ * @shikijs/monaco, so both panes get TextMate-quality colors from the user's
+ * real theme (resolved host-side), with Dark+/Light+ as fallback.
  */
 
 type LangModule = { default: unknown };
 
-/** VS Code languageId → shiki grammar (lazy chunk). */
+/** VS Code languageId → shiki grammar (lazy esbuild chunk). */
 const LANGS: Record<string, { id: string; load: () => Promise<LangModule> }> = {
   typescript: { id: 'typescript', load: () => import('@shikijs/langs/typescript') },
   typescriptreact: { id: 'tsx', load: () => import('@shikijs/langs/tsx') },
@@ -55,6 +53,7 @@ const LANGS: Record<string, { id: string; load: () => Promise<LangModule> }> = {
 let highlighterPromise: Promise<HighlighterCore> | undefined;
 let currentThemeName: string | undefined;
 const loadedLangs = new Set<string>();
+const registeredMonacoLangs = new Set<string>();
 
 function getHighlighter(): Promise<HighlighterCore> {
   if (!highlighterPromise) {
@@ -67,53 +66,61 @@ function getHighlighter(): Promise<HighlighterCore> {
   return highlighterPromise;
 }
 
-/** Loads the user's theme (or the Dark+/Light+ fallback) into shiki. */
-export async function setSyntaxTheme(theme: SyntaxTheme | undefined): Promise<void> {
+/**
+ * Loads theme + grammar into shiki, registers the language with Monaco and
+ * activates shiki-driven tokenization. Returns the Monaco language id to use
+ * for the editor models ('plaintext' when the language is unsupported).
+ */
+export async function initHighlighting(
+  monaco: typeof monacoApi,
+  theme: SyntaxTheme | undefined,
+  languageId: string
+): Promise<{ monacoLanguage: string }> {
+  const highlighter = await getHighlighter();
+
   try {
-    const highlighter = await getHighlighter();
     if (theme) {
       await highlighter.loadTheme(theme.raw as never);
       currentThemeName = theme.name;
-      return;
+    } else if (!currentThemeName) {
+      const dark = !document.body.classList.contains('vscode-light');
+      const fallback = dark
+        ? await import('@shikijs/themes/dark-plus')
+        : await import('@shikijs/themes/light-plus');
+      await highlighter.loadTheme(fallback.default as never);
+      currentThemeName = (fallback.default as { name: string }).name;
     }
-    const dark = !document.body.classList.contains('vscode-light');
-    const fallback = dark
-      ? await import('@shikijs/themes/dark-plus')
-      : await import('@shikijs/themes/light-plus');
-    await highlighter.loadTheme(fallback.default as never);
-    currentThemeName = (fallback.default as { name?: string }).name;
   } catch (error) {
     console.warn('bridge-diff: failed to load syntax theme', error);
-    currentThemeName = undefined;
   }
-}
 
-/**
- * Tokenizes a whole file (multi-line grammar state preserved).
- * Returns undefined for unsupported languages or when no theme is loaded —
- * callers keep the plain-text rendering in that case.
- */
-export async function tokenizeFile(
-  text: string,
-  languageId: string
-): Promise<ThemedToken[][] | undefined> {
+  let monacoLanguage = 'plaintext';
   const entry = LANGS[languageId];
-  if (!entry || !currentThemeName) {
-    return undefined;
-  }
-  try {
-    const highlighter = await getHighlighter();
-    if (!loadedLangs.has(entry.id)) {
-      const grammar = await entry.load();
-      await highlighter.loadLanguage(grammar.default as never);
-      loadedLangs.add(entry.id);
+  if (entry) {
+    try {
+      if (!loadedLangs.has(entry.id)) {
+        const grammar = await entry.load();
+        await highlighter.loadLanguage(grammar.default as never);
+        loadedLangs.add(entry.id);
+      }
+      if (!registeredMonacoLangs.has(entry.id)) {
+        monaco.languages.register({ id: entry.id });
+        registeredMonacoLangs.add(entry.id);
+      }
+      monacoLanguage = entry.id;
+    } catch (error) {
+      console.warn('bridge-diff: failed to load grammar', error);
     }
-    return highlighter.codeToTokensBase(text, {
-      lang: entry.id as never,
-      theme: currentThemeName as never,
-    });
-  } catch (error) {
-    console.warn('bridge-diff: tokenization failed', error);
-    return undefined;
   }
+
+  try {
+    shikiToMonaco(highlighter, monaco);
+    if (currentThemeName) {
+      monaco.editor.setTheme(currentThemeName);
+    }
+  } catch (error) {
+    console.warn('bridge-diff: shikiToMonaco failed', error);
+  }
+
+  return { monacoLanguage };
 }

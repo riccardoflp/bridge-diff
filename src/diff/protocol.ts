@@ -32,4 +32,7 @@ export type WebviewMessage =
   | { type: 'openAt'; side: 'left' | 'right'; line: number }
   | { type: 'revertChunk'; chunkId: number }
   | { type: 'stageChunk'; chunkId: number }
-  | { type: 'unstageChunk'; chunkId: number };
+  | { type: 'unstageChunk'; chunkId: number }
+  /** Full right-side text after an in-place edit (LF line endings). */
+  | { type: 'edit'; text: string }
+  | { type: 'saveFile' };

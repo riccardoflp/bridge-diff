@@ -36,6 +36,9 @@ word-level intra-line highlights and chunk navigation.
   Open File, previous/next change, Stage File, Unstage File, Discard Changes.
 - **Syntax highlighting** that matches your *actual* color theme: the active
   theme's JSON is resolved host-side (includes merged) and loaded into shiki.
+- **Editable diff**: both panes are Monaco editors — the working-tree side is
+  fully editable in place (undo, multi-cursor, find, IME). Edits sync live
+  into the real document (kept dirty); `Ctrl+S` inside the diff saves.
 
 ## Roadmap
 

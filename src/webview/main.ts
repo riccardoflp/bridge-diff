@@ -1,9 +1,20 @@
+import * as monaco from 'monaco-editor/esm/vs/editor/editor.api.js';
+// the editor core no longer pulls in the icon font by itself
+import 'monaco-editor/esm/vs/base/browser/ui/codicons/codicon/codicon.css';
 import { AlignedDiffModel, DiffChunk } from '../diff/model';
-import { DiffSettings, HostMessage, WebviewMessage } from '../diff/protocol';
+import { DiffSettings, HostMessage, SyntaxTheme, WebviewMessage } from '../diff/protocol';
 import { ChunkActionsConfig, Connectors } from './connectors';
-import { setSyntaxTheme, tokenizeFile } from './highlight';
+import {
+  DiffEditors,
+  buildActiveChunkDecorations,
+  buildDiffDecorations,
+  createEditors,
+  lineHeightOf,
+  setupMonacoEnvironment,
+} from './editors';
+import { initHighlighting } from './highlight';
 import { Navigation } from './navigation';
-import { RenderedView, applySyntaxTokens, render, sideText } from './render';
+import { Layout, createLayout, setHeaderLabels, sideText } from './render';
 import { ScrollSync, sideExtent } from './scrollSync';
 import './styles.css';
 
@@ -15,38 +26,36 @@ declare function acquireVsCodeApi(): {
 
 const vscodeApi = acquireVsCodeApi();
 const root = document.getElementById('app') as HTMLElement;
-const connectors = new Connectors();
-const scrollSync = new ScrollSync(() => connectors.schedule());
+setupMonacoEnvironment(root.dataset.worker ?? '');
 
 let model: AlignedDiffModel | undefined;
-let view: RenderedView | undefined;
 let settings: DiffSettings | undefined;
-let lineHeight = 18;
-let themeLoaded: Promise<void> = Promise.resolve();
-let highlightRequest = 0;
+let layout: Layout | undefined;
+let editors: DiffEditors | undefined;
+let diffDecorLeft: monaco.editor.IEditorDecorationsCollection | undefined;
+let diffDecorRight: monaco.editor.IEditorDecorationsCollection | undefined;
+let activeDecorLeft: monaco.editor.IEditorDecorationsCollection | undefined;
+let activeDecorRight: monaco.editor.IEditorDecorationsCollection | undefined;
 
+/** True while we copy host state into the editors (suppresses edit events). */
+let applyingRemote = false;
+/** True when the right editor has local keystrokes not yet confirmed by an update. */
+let localDirty = false;
+let editTimer: number | undefined;
+
+const connectors = new Connectors();
+const scrollSync = new ScrollSync(() => connectors.schedule());
 const toolbar = createToolbar();
-const navigation = new Navigation((current, total) => {
-  toolbar.counter.textContent =
-    total === 0 ? 'No changes' : `${current >= 0 ? current + 1 : '–'} / ${total}`;
-  connectors.setActiveChunk(current);
-  if (current >= 0) {
-    post({ type: 'currentChunkChanged', chunkId: current });
-  }
-}, scrollToChunk);
+const navigation = new Navigation(onNavChange);
 
 window.addEventListener('message', (event: MessageEvent) => {
   const message = event.data as HostMessage;
   switch (message.type) {
     case 'init':
-      settings = message.settings;
-      themeLoaded = setSyntaxTheme(message.syntaxTheme);
-      apply(message.model, false);
-      void highlight();
+      void onInit(message.model, message.settings, message.syntaxTheme);
       break;
     case 'update':
-      apply(message.model, true);
-      void highlight();
+      onUpdate(message.model);
       break;
     case 'navigate':
       if (message.direction === 'next') {
@@ -56,26 +65,155 @@ window.addEventListener('message', (event: MessageEvent) => {
       }
       break;
     case 'theme':
-      themeLoaded = setSyntaxTheme(message.syntaxTheme);
-      void highlight();
+      if (model) {
+        void initHighlighting(monaco, message.syntaxTheme, model.languageId);
+      }
       break;
   }
 });
 
-function apply(next: AlignedDiffModel, preserveScroll: boolean): void {
-  const prevLeft = view?.leftPane.scrollTop ?? 0;
-  const prevRight = view?.rightPane.scrollTop ?? 0;
-  model = next;
-  view = render(root, next);
-  lineHeight = measureLineHeight(view);
-  scrollSync.attach(view.leftPane, view.rightPane, next, lineHeight);
-  connectors.attach(view.gutter, view.leftPane, view.rightPane, next, lineHeight, chunkActions());
-  navigation.setModel(next);
-  if (preserveScroll) {
-    scrollSync.setScrollTop(view.leftPane, prevLeft);
-    scrollSync.setScrollTop(view.rightPane, prevRight);
+async function onInit(
+  m: AlignedDiffModel,
+  s: DiffSettings,
+  theme: SyntaxTheme | undefined
+): Promise<void> {
+  settings = s;
+  layout = createLayout(root);
+  editors = createEditors(layout.leftHost, layout.rightHost);
+  const { monacoLanguage } = await initHighlighting(monaco, theme, m.languageId);
+
+  applyingRemote = true;
+  try {
+    editors.left.setModel(monaco.editor.createModel(sideText(m, 'left'), monacoLanguage));
+    editors.right.setModel(monaco.editor.createModel(sideText(m, 'right'), monacoLanguage));
+  } finally {
+    applyingRemote = false;
   }
-  wireOpenAt(view, next);
+  editors.right.updateOptions({ readOnly: s.rightSide !== 'worktree' });
+
+  wireEditing(editors.right);
+  wireKeys(editors);
+  refreshAll(m);
+}
+
+function onUpdate(m: AlignedDiffModel): void {
+  if (!editors) {
+    return;
+  }
+  const leftText = sideText(m, 'left');
+  const rightText = sideText(m, 'right');
+  applyingRemote = true;
+  try {
+    if (editors.left.getValue() !== leftText) {
+      editors.left.setValue(leftText);
+    }
+    const currentRight = editors.right.getValue();
+    if (currentRight === rightText) {
+      localDirty = false; // editor and document converged
+    } else if (!localDirty && editTimer === undefined) {
+      // genuine external change (chunk revert, git checkout, edit in the
+      // regular editor) — never clobber keystrokes still in flight
+      editors.right.setValue(rightText);
+    }
+  } finally {
+    applyingRemote = false;
+  }
+  refreshAll(m);
+}
+
+function refreshAll(m: AlignedDiffModel): void {
+  model = m;
+  if (!editors || !layout) {
+    return;
+  }
+  setHeaderLabels(layout, m);
+  diffDecorLeft ??= editors.left.createDecorationsCollection([]);
+  diffDecorRight ??= editors.right.createDecorationsCollection([]);
+  diffDecorLeft.set(buildDiffDecorations(m, 'left'));
+  diffDecorRight.set(buildDiffDecorations(m, 'right'));
+
+  const lineHeight = lineHeightOf(editors.right);
+  scrollSync.attach(editors.left, editors.right, m, lineHeight);
+  connectors.attach(
+    layout.gutter,
+    () => editors!.left.getScrollTop(),
+    () => editors!.right.getScrollTop(),
+    m,
+    lineHeight,
+    chunkActions()
+  );
+  navigation.setModel(m);
+}
+
+function onNavChange(current: number, total: number, scroll: boolean): void {
+  toolbar.counter.textContent =
+    total === 0 ? 'No changes' : `${current >= 0 ? current + 1 : '–'} / ${total}`;
+  connectors.setActiveChunk(current);
+  if (!model || !editors) {
+    return;
+  }
+  activeDecorLeft ??= editors.left.createDecorationsCollection([]);
+  activeDecorRight ??= editors.right.createDecorationsCollection([]);
+  activeDecorLeft.set(buildActiveChunkDecorations(model, current, 'left'));
+  activeDecorRight.set(buildActiveChunkDecorations(model, current, 'right'));
+  if (current >= 0) {
+    post({ type: 'currentChunkChanged', chunkId: current });
+    if (scroll) {
+      scrollToChunk(model.chunks[current]);
+    }
+  }
+}
+
+function scrollToChunk(chunk: DiffChunk): void {
+  if (!editors) {
+    return;
+  }
+  const lineHeight = lineHeightOf(editors.right);
+  const [lt, lb] = sideExtent(chunk.leftStart, chunk.leftCount, lineHeight);
+  const [rt, rb] = sideExtent(chunk.rightStart, chunk.rightCount, lineHeight);
+  centerOn(editors.left, (lt + lb) / 2);
+  centerOn(editors.right, (rt + rb) / 2);
+  connectors.schedule();
+}
+
+function centerOn(editor: monaco.editor.IStandaloneCodeEditor, y: number): void {
+  scrollSync.setScrollTop(editor, y - editor.getLayoutInfo().height / 2);
+}
+
+/** Local edits → debounced full-text sync into the real document (kept dirty). */
+function wireEditing(right: monaco.editor.IStandaloneCodeEditor): void {
+  right.onDidChangeModelContent(() => {
+    if (applyingRemote || settings?.rightSide !== 'worktree') {
+      return;
+    }
+    localDirty = true;
+    if (editTimer !== undefined) {
+      clearTimeout(editTimer);
+    }
+    editTimer = window.setTimeout(postEdit, 200);
+  });
+}
+
+function postEdit(): void {
+  editTimer = undefined;
+  if (editors) {
+    post({ type: 'edit', text: editors.right.getValue() });
+  }
+}
+
+function wireKeys(eds: DiffEditors): void {
+  // Ctrl+S inside the webview: flush pending edits, then save the document
+  eds.right.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
+    if (editTimer !== undefined) {
+      clearTimeout(editTimer);
+      postEdit();
+    }
+    post({ type: 'saveFile' });
+  });
+  for (const editor of [eds.left, eds.right]) {
+    editor.addCommand(monaco.KeyCode.F7, () => navigation.next());
+    editor.addCommand(monaco.KeyMod.Shift | monaco.KeyCode.F7, () => navigation.prev());
+  }
 }
 
 /** Worktree diffs offer revert + stage per chunk; index diffs offer unstage. */
@@ -89,78 +227,6 @@ function chunkActions(): ChunkActionsConfig | undefined {
     kinds,
     onAction: (kind, chunkId) => post({ type: kind, chunkId }),
   };
-}
-
-function measureLineHeight(current: RenderedView): number {
-  const probe =
-    current.leftPane.querySelector('.line') ?? current.rightPane.querySelector('.line');
-  const height = probe?.getBoundingClientRect().height ?? 0;
-  return height > 1 ? height : 18;
-}
-
-/** Progressive enhancement: plain text renders instantly, tokens land async. */
-async function highlight(): Promise<void> {
-  if (!model || !view) {
-    return;
-  }
-  const requestId = ++highlightRequest;
-  await themeLoaded;
-  const current = model;
-  const [leftTokens, rightTokens] = await Promise.all([
-    tokenizeFile(sideText(current, 'left'), current.languageId),
-    tokenizeFile(sideText(current, 'right'), current.languageId),
-  ]);
-  if (requestId !== highlightRequest || model !== current || !view) {
-    return;
-  }
-  if (leftTokens) {
-    applySyntaxTokens(view, current, 'left', leftTokens);
-  }
-  if (rightTokens) {
-    applySyntaxTokens(view, current, 'right', rightTokens);
-  }
-}
-
-function scrollToChunk(chunk: DiffChunk): void {
-  if (!view) {
-    return;
-  }
-  const [lt, lb] = sideExtent(chunk.leftStart, chunk.leftCount, lineHeight);
-  const [rt, rb] = sideExtent(chunk.rightStart, chunk.rightCount, lineHeight);
-  centerOn(view.leftPane, (lt + lb) / 2);
-  centerOn(view.rightPane, (rt + rb) / 2);
-  connectors.schedule();
-}
-
-function centerOn(pane: HTMLElement, y: number): void {
-  scrollSync.setScrollTop(pane, y - pane.clientHeight / 2);
-}
-
-function wireOpenAt(current: RenderedView, m: AlignedDiffModel): void {
-  const handler = (side: 'left' | 'right') => (event: MouseEvent) => {
-    const lineEl = (event.target as HTMLElement).closest('.line') as HTMLElement | null;
-    if (!lineEl?.dataset.row) {
-      return;
-    }
-    const line = nearestWorktreeLine(m, Number(lineEl.dataset.row));
-    post({ type: 'openAt', side, line });
-  };
-  current.leftPane.addEventListener('dblclick', handler('left'));
-  current.rightPane.addEventListener('dblclick', handler('right'));
-}
-
-/**
- * The host always opens the worktree file, so map any row (including left-only
- * rows) to the nearest preceding right-side line number.
- */
-function nearestWorktreeLine(current: AlignedDiffModel, rowIndex: number): number {
-  for (let i = Math.min(rowIndex, current.rows.length - 1); i >= 0; i--) {
-    const lineNumber = current.rows[i].right.lineNumber;
-    if (lineNumber !== undefined) {
-      return lineNumber;
-    }
-  }
-  return 1;
 }
 
 function createToolbar(): { element: HTMLElement; counter: HTMLElement } {

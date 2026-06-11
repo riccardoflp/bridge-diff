@@ -1,23 +1,25 @@
-import { AlignedDiffModel, DiffChunk } from '../diff/model';
+import { AlignedDiffModel } from '../diff/model';
 
-/** Tracks the current chunk and applies focus highlight + scroll. */
+/**
+ * Tracks the current chunk index; all side effects (decorations, counter,
+ * connectors, scrolling) are applied by the onChange callback in main.ts.
+ */
 export class Navigation {
   private current = -1;
-  private model: AlignedDiffModel | undefined;
+  private total = 0;
 
   constructor(
-    private readonly onChange: (current: number, total: number) => void,
-    private readonly scrollTo: (chunk: DiffChunk) => void
+    private readonly onChange: (current: number, total: number, scroll: boolean) => void
   ) {}
 
   setModel(model: AlignedDiffModel): void {
-    this.model = model;
-    if (model.chunks.length === 0) {
+    this.total = model.chunks.length;
+    if (this.total === 0) {
       this.current = -1;
-    } else if (this.current >= model.chunks.length) {
-      this.current = model.chunks.length - 1;
+    } else if (this.current >= this.total) {
+      this.current = this.total - 1;
     }
-    this.applyHighlight(false);
+    this.onChange(this.current, this.total, false);
   }
 
   next(): void {
@@ -29,32 +31,15 @@ export class Navigation {
   }
 
   private move(delta: number): void {
-    const total = this.model?.chunks.length ?? 0;
-    if (total === 0) {
+    if (this.total === 0) {
       return;
     }
     this.current =
       this.current === -1
         ? delta > 0
           ? 0
-          : total - 1
-        : (this.current + delta + total) % total;
-    this.applyHighlight(true);
-  }
-
-  private applyHighlight(scroll: boolean): void {
-    document
-      .querySelectorAll('.line.active-chunk')
-      .forEach((line) => line.classList.remove('active-chunk'));
-    this.onChange(this.current, this.model?.chunks.length ?? 0);
-    if (this.current < 0 || !this.model) {
-      return;
-    }
-    document
-      .querySelectorAll(`.line[data-chunk="${this.current}"]`)
-      .forEach((line) => line.classList.add('active-chunk'));
-    if (scroll) {
-      this.scrollTo(this.model.chunks[this.current]);
-    }
+          : this.total - 1
+        : (this.current + delta + this.total) % this.total;
+    this.onChange(this.current, this.total, true);
   }
 }

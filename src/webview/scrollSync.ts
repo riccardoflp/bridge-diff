@@ -1,4 +1,7 @@
+import type * as monaco from 'monaco-editor/esm/vs/editor/editor.api.js';
 import { AlignedDiffModel } from '../diff/model';
+
+type Editor = monaco.editor.IStandaloneCodeEditor;
 
 /**
  * Absolute pixel extent [top, bottom] of one side of a chunk.
@@ -14,50 +17,42 @@ export function sideExtent(start: number, count: number, lineHeight: number): [n
 }
 
 /**
- * Keeps the two panes' vertical scroll positions in sync through a piecewise
- * linear mapping anchored at chunk boundaries: context regions scroll 1:1,
- * changed regions of different heights stretch/compress (WebStorm-style).
+ * Keeps the two Monaco editors' vertical scroll positions in sync through a
+ * piecewise linear mapping anchored at chunk boundaries: context regions
+ * scroll 1:1, changed regions of different heights stretch (WebStorm-style).
  */
 export class ScrollSync {
-  private left: HTMLElement | undefined;
-  private right: HTMLElement | undefined;
   private anchorsLeft: number[] = [0];
   private anchorsRight: number[] = [0];
   /** Suppresses feedback loops: scroll positions we set programmatically. */
-  private readonly expected = new Map<HTMLElement, number>();
-  private detach: (() => void) | undefined;
+  private readonly expected = new Map<Editor, number>();
+  private listeners: monaco.IDisposable[] = [];
 
   constructor(private readonly onAnyScroll: () => void) {}
 
-  attach(
-    left: HTMLElement,
-    right: HTMLElement,
-    model: AlignedDiffModel,
-    lineHeight: number
-  ): void {
-    this.detach?.();
-    this.left = left;
-    this.right = right;
-    this.buildAnchors(model, lineHeight);
-
-    const onLeft = () => this.onScroll(left, right, true);
-    const onRight = () => this.onScroll(right, left, false);
-    left.addEventListener('scroll', onLeft, { passive: true });
-    right.addEventListener('scroll', onRight, { passive: true });
-    this.detach = () => {
-      left.removeEventListener('scroll', onLeft);
-      right.removeEventListener('scroll', onRight);
-    };
+  attach(left: Editor, right: Editor, model: AlignedDiffModel, lineHeight: number): void {
+    this.listeners.forEach((d) => d.dispose());
+    this.setAnchors(model, lineHeight);
+    this.listeners = [
+      left.onDidScrollChange((event) => {
+        if (event.scrollTopChanged) {
+          this.onScroll(left, right, true);
+        } else {
+          this.onAnyScroll();
+        }
+      }),
+      right.onDidScrollChange((event) => {
+        if (event.scrollTopChanged) {
+          this.onScroll(right, left, false);
+        } else {
+          this.onAnyScroll();
+        }
+      }),
+    ];
   }
 
-  /** Scroll one pane without triggering a counter-sync from its scroll event. */
-  setScrollTop(pane: HTMLElement, value: number): void {
-    const clamped = Math.max(0, Math.min(value, pane.scrollHeight - pane.clientHeight));
-    this.expected.set(pane, clamped);
-    pane.scrollTop = clamped;
-  }
-
-  private buildAnchors(model: AlignedDiffModel, lineHeight: number): void {
+  /** Rebuilds the anchor mapping (e.g. after a model update) without re-listening. */
+  setAnchors(model: AlignedDiffModel, lineHeight: number): void {
     const anchorsLeft = [0];
     const anchorsRight = [0];
     const push = (l: number, r: number) => {
@@ -86,16 +81,24 @@ export class ScrollSync {
     this.anchorsRight = anchorsRight;
   }
 
-  private onScroll(source: HTMLElement, target: HTMLElement, fromLeft: boolean): void {
+  /** Scroll one editor without triggering a counter-sync from its scroll event. */
+  setScrollTop(editor: Editor, value: number): void {
+    const max = Math.max(0, editor.getScrollHeight() - editor.getLayoutInfo().height);
+    const clamped = Math.max(0, Math.min(value, max));
+    this.expected.set(editor, clamped);
+    editor.setScrollTop(clamped);
+  }
+
+  private onScroll(source: Editor, target: Editor, fromLeft: boolean): void {
     const expected = this.expected.get(source);
-    if (expected !== undefined && Math.abs(source.scrollTop - expected) < 1.5) {
+    if (expected !== undefined && Math.abs(source.getScrollTop() - expected) < 1.5) {
       this.expected.delete(source);
       this.onAnyScroll();
       return;
     }
     this.expected.delete(source);
-    const mapped = this.map(source.scrollTop, fromLeft);
-    if (Math.abs(target.scrollTop - mapped) >= 1) {
+    const mapped = this.map(source.getScrollTop(), fromLeft);
+    if (Math.abs(target.getScrollTop() - mapped) >= 1) {
       this.setScrollTop(target, mapped);
     }
     this.onAnyScroll();
