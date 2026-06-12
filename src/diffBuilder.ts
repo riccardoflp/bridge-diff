@@ -42,14 +42,14 @@ export async function buildModel(
 
   if (looksBinary(left) || looksBinary(right)) {
     if (options.interactive) {
-      void vscode.window.showWarningMessage('Bridge Diff: this file looks binary.');
+      void vscode.window.showWarningMessage('Flow Diff: this file looks binary.');
     }
     return undefined;
   }
 
   if (options.interactive && countLines(left) + countLines(right) > LARGE_FILE_LINES) {
     const choice = await vscode.window.showWarningMessage(
-      'Bridge Diff: this file is very large and the diff may be slow. Continue?',
+      'Flow Diff: this file is very large and the diff may be slow. Continue?',
       { modal: true },
       'Continue'
     );

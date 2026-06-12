@@ -34,7 +34,7 @@ export class ChunkActions {
       await refreshPanel(this.git, panel);
     } catch (error) {
       void vscode.window.showWarningMessage(
-        `Bridge Diff: ${actionLabel(action)} failed — ${String((error as Error).message ?? error)}`
+        `Flow Diff: ${actionLabel(action)} failed — ${String((error as Error).message ?? error)}`
       );
     }
   }

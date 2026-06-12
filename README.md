@@ -1,4 +1,4 @@
-# Bridge Diff
+# Flow Diff
 
 WebStorm-style side-by-side git diff viewer for VS Code: aligned panes with
 filler lines, curved connectors in the center gutter linking changed blocks,
@@ -38,13 +38,13 @@ word-level intra-line highlights and chunk navigation.
 
 ## Usage
 
-- Command palette → **Bridge Diff: Open Diff (Working Tree vs HEAD)** for the
+- Command palette → **Flow Diff: Open Diff (Working Tree vs HEAD)** for the
   active file.
 - Right-click a file in the Source Control view → **Open Diff**.
 - Changed files show a diff button in the editor title bar.
-- **Bridge Diff: Open Diff (Index vs HEAD)** compares the staged copy instead.
-- By default Bridge Diff also takes over the diff tabs opened by the built-in
-  git extension (setting `bridgeDiff.interceptGitOpenChange`).
+- **Flow Diff: Open Diff (Index vs HEAD)** compares the staged copy instead.
+- By default Flow Diff also takes over the diff tabs opened by the built-in
+  git extension (setting `flowDiff.interceptGitOpenChange`).
 
 ## Roadmap
 

@@ -1,11 +1,11 @@
 {
-  "name": "bridge-diff",
-  "displayName": "Bridge Diff",
+  "name": "flow-diff",
+  "displayName": "Flow Diff",
   "description": "Side-by-side git diff viewer with center-gutter connectors",
   "version": "0.1.0",
   "license": "MIT",
   "publisher": "RiccardoFilippozzi",
-  "repository": "https://github.com/riccardoflp/bridge-diff",
+  "repository": "https://github.com/riccardoflp/flow-diff",
   "engines": {
     "vscode": "^1.90.0"
   },
@@ -31,150 +31,150 @@
   "contributes": {
     "commands": [
       {
-        "command": "bridgeDiff.openDiff",
+        "command": "flowDiff.openDiff",
         "title": "Open Diff (Working Tree vs HEAD)",
-        "category": "Bridge Diff",
+        "category": "Flow Diff",
         "icon": "$(diff)"
       },
       {
-        "command": "bridgeDiff.openDiffStaged",
+        "command": "flowDiff.openDiffStaged",
         "title": "Open Diff (Index vs HEAD)",
-        "category": "Bridge Diff"
+        "category": "Flow Diff"
       },
       {
-        "command": "bridgeDiff.nextChunk",
+        "command": "flowDiff.nextChunk",
         "title": "Next Change",
-        "category": "Bridge Diff",
+        "category": "Flow Diff",
         "icon": "$(arrow-down)"
       },
       {
-        "command": "bridgeDiff.prevChunk",
+        "command": "flowDiff.prevChunk",
         "title": "Previous Change",
-        "category": "Bridge Diff",
+        "category": "Flow Diff",
         "icon": "$(arrow-up)"
       },
       {
-        "command": "bridgeDiff.openFile",
+        "command": "flowDiff.openFile",
         "title": "Open File",
-        "category": "Bridge Diff",
+        "category": "Flow Diff",
         "icon": "$(go-to-file)"
       },
       {
-        "command": "bridgeDiff.stageFile",
+        "command": "flowDiff.stageFile",
         "title": "Stage File",
-        "category": "Bridge Diff",
+        "category": "Flow Diff",
         "icon": "$(add)"
       },
       {
-        "command": "bridgeDiff.unstageFile",
+        "command": "flowDiff.unstageFile",
         "title": "Unstage File",
-        "category": "Bridge Diff",
+        "category": "Flow Diff",
         "icon": "$(remove)"
       },
       {
-        "command": "bridgeDiff.revertFile",
+        "command": "flowDiff.revertFile",
         "title": "Discard Changes (Revert File)",
-        "category": "Bridge Diff",
+        "category": "Flow Diff",
         "icon": "$(discard)"
       }
     ],
     "menus": {
       "scm/resourceState/context": [
         {
-          "command": "bridgeDiff.openDiff",
+          "command": "flowDiff.openDiff",
           "when": "scmProvider == git",
           "group": "navigation@1"
         },
         {
-          "command": "bridgeDiff.openDiffStaged",
+          "command": "flowDiff.openDiffStaged",
           "when": "scmProvider == git",
           "group": "navigation@2"
         }
       ],
       "editor/title": [
         {
-          "command": "bridgeDiff.openDiff",
-          "when": "config.git.enabled && resourceScheme == file && bridgeDiff.activeFileHasChanges",
+          "command": "flowDiff.openDiff",
+          "when": "config.git.enabled && resourceScheme == file && flowDiff.activeFileHasChanges",
           "group": "navigation@-1"
         },
         {
-          "command": "bridgeDiff.openFile",
-          "when": "activeWebviewPanelId == bridgeDiff.panel",
+          "command": "flowDiff.openFile",
+          "when": "activeWebviewPanelId == flowDiff.panel",
           "group": "navigation@1"
         },
         {
-          "command": "bridgeDiff.prevChunk",
-          "when": "activeWebviewPanelId == bridgeDiff.panel",
+          "command": "flowDiff.prevChunk",
+          "when": "activeWebviewPanelId == flowDiff.panel",
           "group": "navigation@2"
         },
         {
-          "command": "bridgeDiff.nextChunk",
-          "when": "activeWebviewPanelId == bridgeDiff.panel",
+          "command": "flowDiff.nextChunk",
+          "when": "activeWebviewPanelId == flowDiff.panel",
           "group": "navigation@3"
         },
         {
-          "command": "bridgeDiff.stageFile",
-          "when": "activeWebviewPanelId == bridgeDiff.panel && bridgeDiff.activeSide == worktree",
+          "command": "flowDiff.stageFile",
+          "when": "activeWebviewPanelId == flowDiff.panel && flowDiff.activeSide == worktree",
           "group": "navigation@4"
         },
         {
-          "command": "bridgeDiff.revertFile",
-          "when": "activeWebviewPanelId == bridgeDiff.panel && bridgeDiff.activeSide == worktree",
+          "command": "flowDiff.revertFile",
+          "when": "activeWebviewPanelId == flowDiff.panel && flowDiff.activeSide == worktree",
           "group": "navigation@5"
         },
         {
-          "command": "bridgeDiff.unstageFile",
-          "when": "activeWebviewPanelId == bridgeDiff.panel && bridgeDiff.activeSide == index",
+          "command": "flowDiff.unstageFile",
+          "when": "activeWebviewPanelId == flowDiff.panel && flowDiff.activeSide == index",
           "group": "navigation@4"
         }
       ],
       "commandPalette": [
         {
-          "command": "bridgeDiff.nextChunk",
-          "when": "activeWebviewPanelId == bridgeDiff.panel"
+          "command": "flowDiff.nextChunk",
+          "when": "activeWebviewPanelId == flowDiff.panel"
         },
         {
-          "command": "bridgeDiff.prevChunk",
-          "when": "activeWebviewPanelId == bridgeDiff.panel"
+          "command": "flowDiff.prevChunk",
+          "when": "activeWebviewPanelId == flowDiff.panel"
         },
         {
-          "command": "bridgeDiff.openFile",
-          "when": "activeWebviewPanelId == bridgeDiff.panel"
+          "command": "flowDiff.openFile",
+          "when": "activeWebviewPanelId == flowDiff.panel"
         },
         {
-          "command": "bridgeDiff.stageFile",
-          "when": "activeWebviewPanelId == bridgeDiff.panel && bridgeDiff.activeSide == worktree"
+          "command": "flowDiff.stageFile",
+          "when": "activeWebviewPanelId == flowDiff.panel && flowDiff.activeSide == worktree"
         },
         {
-          "command": "bridgeDiff.unstageFile",
-          "when": "activeWebviewPanelId == bridgeDiff.panel && bridgeDiff.activeSide == index"
+          "command": "flowDiff.unstageFile",
+          "when": "activeWebviewPanelId == flowDiff.panel && flowDiff.activeSide == index"
         },
         {
-          "command": "bridgeDiff.revertFile",
-          "when": "activeWebviewPanelId == bridgeDiff.panel && bridgeDiff.activeSide == worktree"
+          "command": "flowDiff.revertFile",
+          "when": "activeWebviewPanelId == flowDiff.panel && flowDiff.activeSide == worktree"
         }
       ]
     },
     "configuration": {
-      "title": "Bridge Diff",
+      "title": "Flow Diff",
       "properties": {
-        "bridgeDiff.interceptGitOpenChange": {
+        "flowDiff.interceptGitOpenChange": {
           "type": "boolean",
           "default": true,
-          "description": "Use Bridge Diff instead of VS Code's built-in diff editor for git diffs opened from the Source Control panel, the commit graph, or GitLens."
+          "description": "Use Flow Diff instead of VS Code's built-in diff editor for git diffs opened from the Source Control panel, the commit graph, or GitLens."
         }
       }
     },
     "keybindings": [
       {
-        "command": "bridgeDiff.nextChunk",
+        "command": "flowDiff.nextChunk",
         "key": "f7",
-        "when": "activeWebviewPanelId == bridgeDiff.panel"
+        "when": "activeWebviewPanelId == flowDiff.panel"
       },
       {
-        "command": "bridgeDiff.prevChunk",
+        "command": "flowDiff.prevChunk",
         "key": "shift+f7",
-        "when": "activeWebviewPanelId == bridgeDiff.panel"
+        "when": "activeWebviewPanelId == flowDiff.panel"
       }
     ]
   },

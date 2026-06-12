@@ -25,7 +25,7 @@ export type ChunkActionMessage = Extract<
 >;
 
 export class DiffPanel {
-  static readonly viewType = 'bridgeDiff.panel';
+  static readonly viewType = 'flowDiff.panel';
 
   private readonly panel: vscode.WebviewPanel;
   private readonly disposables: vscode.Disposable[] = [];
@@ -93,7 +93,7 @@ export class DiffPanel {
   private setSideContext(): void {
     void vscode.commands.executeCommand(
       'setContext',
-      'bridgeDiff.activeSide',
+      'flowDiff.activeSide',
       this.descriptor.rightRef ? 'ref' : this.descriptor.rightSide
     );
   }

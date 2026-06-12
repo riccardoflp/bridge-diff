@@ -8,7 +8,7 @@ const DEBOUNCE_MS = 250;
 
 /**
  * Keeps open diff panels in sync with the working tree / index, and maintains
- * the `bridgeDiff.activeFileHasChanges` context key for the editor-title button.
+ * the `flowDiff.activeFileHasChanges` context key for the editor-title button.
  */
 export class Refresher implements vscode.Disposable {
   private readonly disposables: vscode.Disposable[] = [];
@@ -66,7 +66,7 @@ export class Refresher implements vscode.Disposable {
         hasChanges = this.git.hasChanges(repo, uri);
       }
     }
-    void vscode.commands.executeCommand('setContext', 'bridgeDiff.activeFileHasChanges', hasChanges);
+    void vscode.commands.executeCommand('setContext', 'flowDiff.activeFileHasChanges', hasChanges);
   }
 
   dispose(): void {

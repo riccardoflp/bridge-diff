@@ -26,4 +26,4 @@ First public release.
 - Live refresh on save, typing, and git state changes; guards for binary and
   oversized files.
 - Optional takeover of the built-in git diff tabs
-  (`bridgeDiff.interceptGitOpenChange`, default on).
+  (`flowDiff.interceptGitOpenChange`, default on).

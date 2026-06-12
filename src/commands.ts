@@ -15,32 +15,32 @@ export function registerCommands(
     // registered by the built-in git extension and a duplicate registration
     // throws, aborting activation. The default-diff takeover lives in
     // watch/diffTakeover.ts (tab interception) instead.
-    vscode.commands.registerCommand('bridgeDiff.openDiff', (resource?: unknown) =>
+    vscode.commands.registerCommand('flowDiff.openDiff', (resource?: unknown) =>
       openDiff(git, registry, resource, 'worktree')
     ),
-    vscode.commands.registerCommand('bridgeDiff.openDiffStaged', (resource?: unknown) =>
+    vscode.commands.registerCommand('flowDiff.openDiffStaged', (resource?: unknown) =>
       openDiff(git, registry, resource, 'index')
     ),
-    vscode.commands.registerCommand('bridgeDiff.nextChunk', () =>
+    vscode.commands.registerCommand('flowDiff.nextChunk', () =>
       registry.getActive()?.navigate('next')
     ),
-    vscode.commands.registerCommand('bridgeDiff.prevChunk', () =>
+    vscode.commands.registerCommand('flowDiff.prevChunk', () =>
       registry.getActive()?.navigate('prev')
     ),
-    vscode.commands.registerCommand('bridgeDiff.openFile', () =>
+    vscode.commands.registerCommand('flowDiff.openFile', () =>
       fileAction(git, registry, 'open')
     ),
-    vscode.commands.registerCommand('bridgeDiff.stageFile', () =>
+    vscode.commands.registerCommand('flowDiff.stageFile', () =>
       fileAction(git, registry, 'stage')
     ),
-    vscode.commands.registerCommand('bridgeDiff.unstageFile', () =>
+    vscode.commands.registerCommand('flowDiff.unstageFile', () =>
       fileAction(git, registry, 'unstage')
     ),
-    vscode.commands.registerCommand('bridgeDiff.revertFile', () =>
+    vscode.commands.registerCommand('flowDiff.revertFile', () =>
       fileAction(git, registry, 'discard')
     ),
     vscode.commands.registerCommand(
-      'bridgeDiff.openDiffRefs',
+      'flowDiff.openDiffRefs',
       (args: { fileUri: vscode.Uri; leftRef: string; rightRef?: string }) =>
         openDiffAtRefs(git, registry, args)
     )
@@ -90,7 +90,7 @@ async function fileAction(
     await refreshPanel(git, panel);
   } catch (error) {
     void vscode.window.showWarningMessage(
-      `Bridge Diff: ${kind} failed — ${String((error as Error).message ?? error)}`
+      `Flow Diff: ${kind} failed — ${String((error as Error).message ?? error)}`
     );
   }
 }
@@ -103,12 +103,12 @@ async function openDiff(
 ): Promise<void> {
   const uri = resolveUri(resource);
   if (!uri) {
-    void vscode.window.showWarningMessage('Bridge Diff: no file selected.');
+    void vscode.window.showWarningMessage('Flow Diff: no file selected.');
     return;
   }
   const repo = await git.getRepository(uri);
   if (!repo) {
-    void vscode.window.showWarningMessage('Bridge Diff: file is not part of a git repository.');
+    void vscode.window.showWarningMessage('Flow Diff: file is not part of a git repository.');
     return;
   }
 
@@ -138,7 +138,7 @@ async function openDiffAtRefs(
 ): Promise<void> {
   const repo = await git.getRepository(args.fileUri);
   if (!repo) {
-    void vscode.window.showWarningMessage('Bridge Diff: file is not part of a git repository.');
+    void vscode.window.showWarningMessage('Flow Diff: file is not part of a git repository.');
     return;
   }
   const descriptor: DiffDescriptor = {

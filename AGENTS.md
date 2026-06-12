@@ -1,4 +1,4 @@
-# AGENTS.md — Bridge Diff
+# AGENTS.md — Flow Diff
 
 Guida operativa per agenti (e umani) che lavorano su questo repo.
 
@@ -44,7 +44,7 @@ src/
 ├── theme/themeService.ts   # tema attivo → JSON (include risolti, nome slug)
 ├── watch/
 │   ├── refresher.ts        # refresh debounced 250ms + context key
-│   └── diffTakeover.ts     # intercetta i tab diff nativi e apre Bridge Diff
+│   └── diffTakeover.ts     # intercetta i tab diff nativi e apre Flow Diff
 └── webview/                # bundlato da esbuild (esm+splitting), tsconfig proprio
     ├── main.ts             # orchestrazione: init/update/theme, edit sync
     ├── editors.ts          # 2 istanze Monaco + decorazioni diff

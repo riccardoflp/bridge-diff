@@ -91,7 +91,7 @@ export async function initHighlighting(
       currentThemeName = (fallback.default as { name: string }).name;
     }
   } catch (error) {
-    console.warn('bridge-diff: failed to load syntax theme', error);
+    console.warn('flow-diff: failed to load syntax theme', error);
   }
 
   let monacoLanguage = 'plaintext';
@@ -109,7 +109,7 @@ export async function initHighlighting(
       }
       monacoLanguage = entry.id;
     } catch (error) {
-      console.warn('bridge-diff: failed to load grammar', error);
+      console.warn('flow-diff: failed to load grammar', error);
     }
   }
 
@@ -119,7 +119,7 @@ export async function initHighlighting(
       monaco.editor.setTheme(currentThemeName);
     }
   } catch (error) {
-    console.warn('bridge-diff: shikiToMonaco failed', error);
+    console.warn('flow-diff: shikiToMonaco failed', error);
   }
 
   return { monacoLanguage };

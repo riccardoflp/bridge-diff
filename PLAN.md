@@ -1,4 +1,4 @@
-# PLAN.md — Bridge Diff
+# PLAN.md — Flow Diff
 
 Roadmap di progetto. Stato aggiornato al 12 giugno 2026.
 
@@ -18,7 +18,7 @@ modifiche locali e compare-with arbitrario.
 - [x] Connettori SVG genie ridisegnati a ogni scroll (rAF)
 - [x] Navigazione chunk: F7 / Shift+F7, toolbar flottante "n / m"
 - [x] Entry point: palette, context menu SCM, bottone editor/title (context key
-      `bridgeDiff.activeFileHasChanges`), viste worktree-vs-HEAD e index-vs-HEAD
+      `flowDiff.activeFileHasChanges`), viste worktree-vs-HEAD e index-vs-HEAD
 - [x] Refresh live (save, stato git, typing), guard binari e file enormi
 - [x] Syntax highlighting col tema reale dell'utente (themeService → shiki)
 
@@ -44,13 +44,13 @@ modifiche locali e compare-with arbitrario.
 ## ✅ Fase 2.6 — Default diff (fatto)
 
 - [x] `watch/diffTakeover.ts`: i tab diff git nativi vengono chiusi e sostituiti
-      da Bridge Diff (setting `bridgeDiff.interceptGitOpenChange`, default on)
+      da Flow Diff (setting `flowDiff.interceptGitOpenChange`, default on)
 
 ## 🔲 Fase 3 — Albero "Local Changes"
 
 `TreeDataProvider` su `repo.state.workingTreeChanges` / `indexChanges`,
 raggruppato per directory come la tool window Commit di WebStorm; ogni item
-invoca `bridgeDiff.openDiff`. Pura aggiunta: `gitService` espone già stato ed
+invoca `flowDiff.openDiff`. Pura aggiunta: `gitService` espone già stato ed
 eventi. Decidere: vista dedicata in activity bar vs sezione nella vista SCM.
 
 ## 🔲 Fase 4 — Compare with branch / revision

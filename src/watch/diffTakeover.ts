@@ -4,8 +4,8 @@ import * as vscode from 'vscode';
 /**
  * There is no API to replace the built-in diff editor, so this watches for
  * newly opened git diff tabs (SCM view clicks, "Open Changes", gutter
- * indicators), closes them and opens Bridge Diff on the same file instead.
- * Controlled by the `bridgeDiff.interceptGitOpenChange` setting.
+ * indicators), closes them and opens Flow Diff on the same file instead.
+ * Controlled by the `flowDiff.interceptGitOpenChange` setting.
  * (Overriding the `git.openChange` command is not possible: registering an
  * already-registered command id throws and aborts activation.)
  */
@@ -22,18 +22,18 @@ export class DiffTakeover implements vscode.Disposable {
 
   private async maybeTakeOver(tab: vscode.Tab): Promise<void> {
     const enabled = vscode.workspace
-      .getConfiguration('bridgeDiff')
+      .getConfiguration('flowDiff')
       .get<boolean>('interceptGitOpenChange', true);
     if (!enabled || !(tab.input instanceof vscode.TabInputTextDiff)) {
       return;
     }
     const { original, modified } = tab.input;
     console.log(
-      `[BridgeDiff] tab opened — original: ${original.scheme}://${original.path}?${original.query}  modified: ${modified.scheme}://${modified.path}?${modified.query}`
+      `[FlowDiff] tab opened — original: ${original.scheme}://${original.path}?${original.query}  modified: ${modified.scheme}://${modified.path}?${modified.query}`
     );
     const action = this.resolveAction(original, modified);
     if (!action) {
-      console.log(`[BridgeDiff] no matching rule for schemes: ${original.scheme} → ${modified.scheme}`);
+      console.log(`[FlowDiff] no matching rule for schemes: ${original.scheme} → ${modified.scheme}`);
       return;
     }
 
@@ -51,7 +51,7 @@ export class DiffTakeover implements vscode.Disposable {
   ): (() => Thenable<unknown>) | undefined {
     if (original.scheme === 'git' && modified.scheme === 'file') {
       // unstaged: working tree vs HEAD
-      return () => vscode.commands.executeCommand('bridgeDiff.openDiff', modified);
+      return () => vscode.commands.executeCommand('flowDiff.openDiff', modified);
     }
     if (original.scheme === 'git' && modified.scheme === 'git') {
       const leftRef = gitRef(original);
@@ -59,12 +59,12 @@ export class DiffTakeover implements vscode.Disposable {
       if (rightRef === '') {
         // staged: index vs HEAD
         return () =>
-          vscode.commands.executeCommand('bridgeDiff.openDiffStaged', vscode.Uri.file(modified.fsPath));
+          vscode.commands.executeCommand('flowDiff.openDiffStaged', vscode.Uri.file(modified.fsPath));
       }
       if (isHistoricalRef(leftRef) && isHistoricalRef(rightRef)) {
         // Source Control Graph / GitLens commit history: commit A vs commit B (read-only)
         return () =>
-          vscode.commands.executeCommand('bridgeDiff.openDiffRefs', {
+          vscode.commands.executeCommand('flowDiff.openDiffRefs', {
             fileUri: vscode.Uri.file(modified.fsPath),
             leftRef,
             rightRef,
@@ -77,7 +77,7 @@ export class DiffTakeover implements vscode.Disposable {
       const mod = parseGitLensUri(modified);
       if (orig && mod) {
         return () =>
-          vscode.commands.executeCommand('bridgeDiff.openDiffRefs', {
+          vscode.commands.executeCommand('flowDiff.openDiffRefs', {
             fileUri: orig.fileUri,
             leftRef: orig.ref,
             rightRef: mod.ref,
@@ -89,7 +89,7 @@ export class DiffTakeover implements vscode.Disposable {
       const orig = parseGitLensUri(original);
       if (orig) {
         return () =>
-          vscode.commands.executeCommand('bridgeDiff.openDiffRefs', {
+          vscode.commands.executeCommand('flowDiff.openDiffRefs', {
             fileUri: modified,
             leftRef: orig.ref,
           });
