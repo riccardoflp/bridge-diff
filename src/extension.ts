@@ -24,6 +24,13 @@ export function activate(context: vscode.ExtensionContext): void {
       for (const panel of registry.all()) {
         void panel.refreshTheme();
       }
+    }),
+    vscode.workspace.onDidChangeConfiguration((event) => {
+      if (event.affectsConfiguration('editor')) {
+        for (const panel of registry.all()) {
+          panel.refreshEditorConfig();
+        }
+      }
     })
   );
   registerCommands(context, git, registry);

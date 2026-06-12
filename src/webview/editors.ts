@@ -22,52 +22,88 @@ export interface DiffEditors {
   right: monaco.editor.IStandaloneCodeEditor;
 }
 
-export function createEditors(leftHost: HTMLElement, rightHost: HTMLElement): DiffEditors {
+/** Plain-JSON `editor.*` user settings forwarded from the extension host. */
+export type UserEditorOptions = Record<string, unknown>;
+
+type EditorOptions = monaco.editor.IEditorOptions & monaco.editor.IGlobalEditorOptions;
+
+/**
+ * The user's `editor.*` configuration maps 1:1 onto Monaco options (Monaco is
+ * the VS Code editor core; unknown keys are ignored), so the panes behave like
+ * the regular editor. Only keys the diff layout must own are dropped here.
+ */
+function sanitizedUserOptions(user: UserEditorOptions): EditorOptions {
+  const options = { ...user };
+  delete options.readOnly;
+  delete options.automaticLayout;
+  delete options.scrollbar; // merged separately to keep alwaysConsumeMouseWheel
+  return options as EditorOptions;
+}
+
+function scrollbarOptions(
+  user: UserEditorOptions,
+  overrides?: monaco.editor.IEditorScrollbarOptions
+): monaco.editor.IEditorScrollbarOptions {
+  return {
+    ...(user.scrollbar as monaco.editor.IEditorScrollbarOptions | undefined),
+    // nested editors: the page must keep receiving wheel events at the edges
+    alwaysConsumeMouseWheel: false,
+    ...overrides,
+  };
+}
+
+/** The left pane is the read-only reference: minimal chrome at the gutter edge. */
+function leftOverrides(user: UserEditorOptions): monaco.editor.IStandaloneEditorConstructionOptions {
+  return {
+    readOnly: true,
+    // one visible vertical scrollbar (far right); wheel still scrolls the left
+    scrollbar: scrollbarOptions(user, { vertical: 'hidden' }),
+    minimap: { enabled: false },
+    overviewRulerLanes: 0,
+    overviewRulerBorder: false,
+    hideCursorInOverviewRuler: true,
+  };
+}
+
+export function createEditors(
+  leftHost: HTMLElement,
+  rightHost: HTMLElement,
+  user: UserEditorOptions
+): DiffEditors {
   const style = getComputedStyle(document.body);
   const fontFamily = style.getPropertyValue('--vscode-editor-font-family').trim() || 'monospace';
   const fontSize = parseInt(style.getPropertyValue('--vscode-editor-font-size'), 10) || 13;
 
   const common: monaco.editor.IStandaloneEditorConstructionOptions = {
+    // CSS-var fallbacks; the host-provided configuration normally wins
     fontFamily,
     fontSize,
+    ...sanitizedUserOptions(user),
     automaticLayout: true,
-    minimap: { enabled: false },
-    folding: false,
-    glyphMargin: false,
-    lineDecorationsWidth: 8,
-    lineNumbersMinChars: 4,
-    scrollBeyondLastLine: false,
-    renderLineHighlight: 'none',
-    overviewRulerLanes: 0,
-    overviewRulerBorder: false,
-    hideCursorInOverviewRuler: true,
-    wordWrap: 'off',
-    stickyScroll: { enabled: false },
-    guides: { indentation: false },
-    occurrencesHighlight: 'off',
-    selectionHighlight: false,
-    unicodeHighlight: { ambiguousCharacters: false },
     fixedOverflowWidgets: true,
-    scrollbar: {
-      useShadows: false,
-      verticalScrollbarSize: 10,
-      horizontalScrollbarSize: 10,
-      alwaysConsumeMouseWheel: false,
-    },
   };
 
-  const left = monaco.editor.create(leftHost, {
+  const left = monaco.editor.create(leftHost, { ...common, ...leftOverrides(user) });
+  const right = monaco.editor.create(rightHost, {
     ...common,
-    readOnly: true,
-    // one visible vertical scrollbar (far right); wheel still scrolls the left
-    scrollbar: { ...common.scrollbar, vertical: 'hidden' },
+    scrollbar: scrollbarOptions(user),
   });
-  const right = monaco.editor.create(rightHost, { ...common });
   return { left, right };
 }
 
-export function lineHeightOf(editor: monaco.editor.IStandaloneCodeEditor): number {
-  return editor.getOption(monaco.editor.EditorOption.lineHeight);
+/** Re-applies user settings to live editors after a configuration change. */
+export function applyUserOptions(
+  editors: DiffEditors,
+  user: UserEditorOptions,
+  rightReadOnly: boolean
+): void {
+  const common = sanitizedUserOptions(user);
+  editors.left.updateOptions({ ...common, ...leftOverrides(user) });
+  editors.right.updateOptions({
+    ...common,
+    scrollbar: scrollbarOptions(user),
+    readOnly: rightReadOnly,
+  });
 }
 
 /** Diff line backgrounds + intra-line word highlights as Monaco decorations. */

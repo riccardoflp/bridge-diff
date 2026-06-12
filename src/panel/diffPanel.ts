@@ -121,6 +121,27 @@ export class DiffPanel {
     }
   }
 
+  /** Pushes `editor.*` setting changes into the live Monaco panes. */
+  refreshEditorConfig(): void {
+    if (this.initSent) {
+      this.post({ type: 'editorConfig', options: this.readEditorOptions() });
+    }
+  }
+
+  /**
+   * The user's `editor.*` configuration (with language-specific overrides for
+   * this file) as plain JSON. JSON round-trip strips the proxy's methods and
+   * leaves only setting values, which map 1:1 onto Monaco options.
+   */
+  private readEditorOptions(): Record<string, unknown> {
+    const scope: vscode.ConfigurationScope = this.model
+      ? { uri: this.descriptor.fileUri, languageId: this.model.languageId }
+      : this.descriptor.fileUri;
+    return JSON.parse(
+      JSON.stringify(vscode.workspace.getConfiguration('editor', scope))
+    ) as Record<string, unknown>;
+  }
+
   navigate(direction: 'next' | 'prev'): void {
     this.post({ type: 'navigate', direction });
   }
@@ -133,7 +154,10 @@ export class DiffPanel {
     this.post({
       type: 'init',
       model: this.model,
-      settings: { wrap: false, rightSide: this.descriptor.rightRef ? 'ref' : this.descriptor.rightSide },
+      settings: {
+        editorOptions: this.readEditorOptions(),
+        rightSide: this.descriptor.rightRef ? 'ref' : this.descriptor.rightSide,
+      },
       syntaxTheme: await this.themes.resolveActive(),
     });
   }

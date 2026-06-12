@@ -6,10 +6,10 @@ import { DiffSettings, HostMessage, SyntaxTheme, WebviewMessage } from '../diff/
 import { ChunkActionsConfig, Connectors } from './connectors';
 import {
   DiffEditors,
+  applyUserOptions,
   buildActiveChunkDecorations,
   buildDiffDecorations,
   createEditors,
-  lineHeightOf,
   setupMonacoEnvironment,
 } from './editors';
 import { initHighlighting } from './highlight';
@@ -69,6 +69,12 @@ window.addEventListener('message', (event: MessageEvent) => {
         void initHighlighting(monaco, message.syntaxTheme, model.languageId);
       }
       break;
+    case 'editorConfig':
+      if (editors) {
+        applyUserOptions(editors, message.options, settings?.rightSide !== 'worktree');
+        connectors.schedule();
+      }
+      break;
   }
 });
 
@@ -79,7 +85,7 @@ async function onInit(
 ): Promise<void> {
   settings = s;
   layout = createLayout(root);
-  editors = createEditors(layout.leftHost, layout.rightHost);
+  editors = createEditors(layout.leftHost, layout.rightHost, s.editorOptions ?? {});
   const { monacoLanguage } = await initHighlighting(monaco, theme, m.languageId);
 
   applyingRemote = true;
@@ -132,16 +138,8 @@ function refreshAll(m: AlignedDiffModel): void {
   diffDecorLeft.set(buildDiffDecorations(m, 'left'));
   diffDecorRight.set(buildDiffDecorations(m, 'right'));
 
-  const lineHeight = lineHeightOf(editors.right);
-  scrollSync.attach(editors.left, editors.right, m, lineHeight);
-  connectors.attach(
-    layout.gutter,
-    () => editors!.left.getScrollTop(),
-    () => editors!.right.getScrollTop(),
-    m,
-    lineHeight,
-    chunkActions()
-  );
+  scrollSync.attach(editors.left, editors.right, m);
+  connectors.attach(layout.gutter, editors.left, editors.right, m, chunkActions());
   navigation.setModel(m);
 }
 
@@ -168,9 +166,8 @@ function scrollToChunk(chunk: DiffChunk): void {
   if (!editors) {
     return;
   }
-  const lineHeight = lineHeightOf(editors.right);
-  const [lt, lb] = sideExtent(chunk.leftStart, chunk.leftCount, lineHeight);
-  const [rt, rb] = sideExtent(chunk.rightStart, chunk.rightCount, lineHeight);
+  const [lt, lb] = sideExtent(editors.left, chunk.leftStart, chunk.leftCount);
+  const [rt, rb] = sideExtent(editors.right, chunk.rightStart, chunk.rightCount);
   centerOn(editors.left, (lt + lb) / 2);
   centerOn(editors.right, (rt + rb) / 2);
   connectors.schedule();

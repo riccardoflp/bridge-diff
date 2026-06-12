@@ -1,5 +1,8 @@
+import type * as monaco from 'monaco-editor/esm/vs/editor/editor.api.js';
 import { AlignedDiffModel, DiffChunk } from '../diff/model';
 import { sideExtent } from './scrollSync';
+
+type Editor = monaco.editor.IStandaloneCodeEditor;
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 export const GUTTER_WIDTH = 28;
@@ -28,29 +31,26 @@ const ACTION_GLYPHS: Record<ChunkActionKind, { glyph: string; title: string }> =
 export class Connectors {
   private model: AlignedDiffModel | undefined;
   private gutter: HTMLElement | undefined;
-  private getLeftScroll: (() => number) | undefined;
-  private getRightScroll: (() => number) | undefined;
+  private left: Editor | undefined;
+  private right: Editor | undefined;
   private svg: SVGSVGElement | undefined;
   private actionsLayer: HTMLElement | undefined;
   private actions: ChunkActionsConfig | undefined;
-  private lineHeight = 18;
   private activeChunk = -1;
   private rafPending = false;
   private readonly observer = new ResizeObserver(() => this.schedule());
 
   attach(
     gutter: HTMLElement,
-    getLeftScroll: () => number,
-    getRightScroll: () => number,
+    left: Editor,
+    right: Editor,
     model: AlignedDiffModel,
-    lineHeight: number,
     actions: ChunkActionsConfig | undefined
   ): void {
     this.gutter = gutter;
-    this.getLeftScroll = getLeftScroll;
-    this.getRightScroll = getRightScroll;
+    this.left = left;
+    this.right = right;
     this.model = model;
-    this.lineHeight = lineHeight;
     this.actions = actions;
 
     this.svg = document.createElementNS(SVG_NS, 'svg');
@@ -82,7 +82,7 @@ export class Connectors {
   }
 
   private redraw(): void {
-    if (!this.svg || !this.gutter || !this.model || !this.getLeftScroll || !this.getRightScroll) {
+    if (!this.svg || !this.gutter || !this.model || !this.left || !this.right) {
       return;
     }
     const height = this.gutter.clientHeight;
@@ -94,12 +94,12 @@ export class Connectors {
       this.actionsLayer.textContent = '';
     }
 
-    const leftScroll = this.getLeftScroll();
-    const rightScroll = this.getRightScroll();
+    const leftScroll = this.left.getScrollTop();
+    const rightScroll = this.right.getScrollTop();
 
     for (const chunk of this.model.chunks) {
-      let [lt, lb] = sideExtent(chunk.leftStart, chunk.leftCount, this.lineHeight);
-      let [rt, rb] = sideExtent(chunk.rightStart, chunk.rightCount, this.lineHeight);
+      let [lt, lb] = sideExtent(this.left, chunk.leftStart, chunk.leftCount);
+      let [rt, rb] = sideExtent(this.right, chunk.rightStart, chunk.rightCount);
       lt -= leftScroll;
       lb -= leftScroll;
       rt -= rightScroll;

@@ -4,16 +4,18 @@ import { AlignedDiffModel } from '../diff/model';
 type Editor = monaco.editor.IStandaloneCodeEditor;
 
 /**
- * Absolute pixel extent [top, bottom] of one side of a chunk.
+ * Absolute pixel extent [top, bottom] of one side of a chunk, in the editor's
+ * content coordinates. Asking the editor (instead of line × lineHeight
+ * arithmetic) keeps the geometry correct under word wrap and code folding.
  * A zero-count side collapses to a point at the insertion line boundary
  * (`start` follows the hunk-header convention: line before the insertion).
  */
-export function sideExtent(start: number, count: number, lineHeight: number): [number, number] {
+export function sideExtent(editor: Editor, start: number, count: number): [number, number] {
   if (count === 0) {
-    const y = start * lineHeight;
+    const y = start === 0 ? 0 : editor.getBottomForLineNumber(start);
     return [y, y];
   }
-  return [(start - 1) * lineHeight, (start - 1 + count) * lineHeight];
+  return [editor.getTopForLineNumber(start), editor.getBottomForLineNumber(start + count - 1)];
 }
 
 /**
@@ -22,6 +24,9 @@ export function sideExtent(start: number, count: number, lineHeight: number): [n
  * scroll 1:1, changed regions of different heights stretch (WebStorm-style).
  */
 export class ScrollSync {
+  private left: Editor | undefined;
+  private right: Editor | undefined;
+  private model: AlignedDiffModel | undefined;
   private anchorsLeft: number[] = [0];
   private anchorsRight: number[] = [0];
   /** Suppresses feedback loops: scroll positions we set programmatically. */
@@ -30,9 +35,17 @@ export class ScrollSync {
 
   constructor(private readonly onAnyScroll: () => void) {}
 
-  attach(left: Editor, right: Editor, model: AlignedDiffModel, lineHeight: number): void {
+  attach(left: Editor, right: Editor, model: AlignedDiffModel): void {
     this.listeners.forEach((d) => d.dispose());
-    this.setAnchors(model, lineHeight);
+    this.left = left;
+    this.right = right;
+    this.model = model;
+    this.setAnchors();
+    // wrapping, folding, or font changes move lines around: rebuild the map
+    const remap = () => {
+      this.setAnchors();
+      this.onAnyScroll();
+    };
     this.listeners = [
       left.onDidScrollChange((event) => {
         if (event.scrollTopChanged) {
@@ -48,11 +61,16 @@ export class ScrollSync {
           this.onAnyScroll();
         }
       }),
+      left.onDidContentSizeChange(remap),
+      right.onDidContentSizeChange(remap),
     ];
   }
 
-  /** Rebuilds the anchor mapping (e.g. after a model update) without re-listening. */
-  setAnchors(model: AlignedDiffModel, lineHeight: number): void {
+  private setAnchors(): void {
+    const { left, right, model } = this;
+    if (!left || !right || !model) {
+      return;
+    }
     const anchorsLeft = [0];
     const anchorsRight = [0];
     const push = (l: number, r: number) => {
@@ -61,22 +79,19 @@ export class ScrollSync {
       anchorsRight.push(Math.max(r, anchorsRight[anchorsRight.length - 1]));
     };
     for (const chunk of model.chunks) {
-      const [lt, lb] = sideExtent(chunk.leftStart, chunk.leftCount, lineHeight);
-      const [rt, rb] = sideExtent(chunk.rightStart, chunk.rightCount, lineHeight);
+      const [lt, lb] = sideExtent(left, chunk.leftStart, chunk.leftCount);
+      const [rt, rb] = sideExtent(right, chunk.rightStart, chunk.rightCount);
       push(lt, rt);
       push(lb, rb);
     }
-    let leftLines = 0;
-    let rightLines = 0;
-    for (const row of model.rows) {
-      if (row.left.kind !== 'filler') {
-        leftLines++;
-      }
-      if (row.right.kind !== 'filler') {
-        rightLines++;
-      }
+    const leftModel = left.getModel();
+    const rightModel = right.getModel();
+    if (leftModel && rightModel) {
+      push(
+        left.getBottomForLineNumber(leftModel.getLineCount()),
+        right.getBottomForLineNumber(rightModel.getLineCount())
+      );
     }
-    push(leftLines * lineHeight, rightLines * lineHeight);
     this.anchorsLeft = anchorsLeft;
     this.anchorsRight = anchorsRight;
   }

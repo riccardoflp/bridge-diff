@@ -5,7 +5,12 @@
 import { AlignedDiffModel } from './model';
 
 export interface DiffSettings {
-  wrap: boolean;
+  /**
+   * The user's `editor.*` configuration as plain JSON; applied to the Monaco
+   * panes so they match the regular editor (Monaco option names mirror the
+   * VS Code setting keys).
+   */
+  editorOptions: Record<string, unknown>;
   /** Drives which chunk actions the webview offers (revert/stage vs unstage vs none). */
   rightSide: 'worktree' | 'index' | 'ref';
 }
@@ -23,7 +28,8 @@ export type HostMessage =
   | { type: 'init'; model: AlignedDiffModel; settings: DiffSettings; syntaxTheme?: SyntaxTheme }
   | { type: 'update'; model: AlignedDiffModel }
   | { type: 'navigate'; direction: 'next' | 'prev' }
-  | { type: 'theme'; syntaxTheme?: SyntaxTheme };
+  | { type: 'theme'; syntaxTheme?: SyntaxTheme }
+  | { type: 'editorConfig'; options: Record<string, unknown> };
 
 /** webview → extension */
 export type WebviewMessage =
