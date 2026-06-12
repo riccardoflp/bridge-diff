@@ -22,6 +22,12 @@ export function sideExtent(editor: Editor, start: number, count: number): [numbe
  * Keeps the two Monaco editors' vertical scroll positions in sync through a
  * piecewise linear mapping anchored at chunk boundaries: context regions
  * scroll 1:1, changed regions of different heights stretch (WebStorm-style).
+ *
+ * The mapping is applied to the viewport *center*, not the top edge. While
+ * traversing a chunk much taller on one side, the shorter side then keeps its
+ * counterpart near mid-viewport — context stays visible above and below —
+ * instead of pinning it against the top of the pane. It also agrees with
+ * chunk navigation, which centers both sides.
  */
 export class ScrollSync {
   private left: Editor | undefined;
@@ -112,7 +118,8 @@ export class ScrollSync {
       return;
     }
     this.expected.delete(source);
-    const mapped = this.map(source.getScrollTop(), fromLeft);
+    const sourceCenter = source.getScrollTop() + source.getLayoutInfo().height / 2;
+    const mapped = this.map(sourceCenter, fromLeft) - target.getLayoutInfo().height / 2;
     if (Math.abs(target.getScrollTop() - mapped) >= 1) {
       this.setScrollTop(target, mapped);
     }
