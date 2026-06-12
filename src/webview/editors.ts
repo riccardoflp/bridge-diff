@@ -1,5 +1,5 @@
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api.js';
-import { AlignedDiffModel } from '../diff/model';
+import { AlignedDiffModel, DiffChunk } from '../diff/model';
 
 /**
  * Workers cannot be created cross-origin from a webview, so the bundled
@@ -160,6 +160,58 @@ export function buildDiffDecorations(
     });
   }
   return decorations;
+}
+
+/** Overview-ruler / minimap colors per chunk kind: CSS var + fallback. */
+const RULER_COLORS: Record<DiffChunk['kind'], [cssVar: string, fallback: string]> = {
+  added: ['--vscode-editorOverviewRuler-addedForeground', 'rgba(72, 126, 2, 0.6)'],
+  removed: ['--vscode-editorOverviewRuler-deletedForeground', 'rgba(241, 76, 76, 0.6)'],
+  modified: ['--vscode-editorOverviewRuler-modifiedForeground', 'rgba(27, 129, 168, 0.6)'],
+};
+
+/** Multiplies a hex/rgb(a) color's alpha — the canvas ruler cannot use CSS opacity. */
+function faded(color: string, factor: number): string {
+  const hex = /^#([0-9a-f]{6})([0-9a-f]{2})?$/i.exec(color);
+  if (hex) {
+    const alpha = Math.round((hex[2] ? parseInt(hex[2], 16) : 255) * factor);
+    return `#${hex[1]}${alpha.toString(16).padStart(2, '0')}`;
+  }
+  const rgb = /^rgba?\((.+?)(?:,\s*([\d.]+))?\)$/.exec(color.replace(/\s/g, ' '));
+  if (rgb) {
+    const parts = rgb[1].split(',').slice(0, 3).join(',');
+    const alpha = (rgb[2] !== undefined ? parseFloat(rgb[2]) : 1) * factor;
+    return `rgba(${parts}, ${alpha})`;
+  }
+  return color;
+}
+
+/**
+ * Chunk markers for the right pane's scrollbar (overview ruler) and minimap,
+ * so the change locations are visible at a glance. The panes scroll in sync,
+ * so the single visible scrollbar represents both sides; a pure deletion
+ * (no lines on the right) gets a one-line marker at its boundary.
+ * Colors must be resolved here: the ruler is canvas, CSS vars don't apply.
+ */
+export function buildOverviewRulerDecorations(
+  model: AlignedDiffModel
+): monaco.editor.IModelDeltaDecoration[] {
+  const style = getComputedStyle(document.body);
+  return model.chunks.map((chunk) => {
+    const [cssVar, fallback] = RULER_COLORS[chunk.kind];
+    let color = style.getPropertyValue(cssVar).trim() || fallback;
+    if (chunk.staged) {
+      color = faded(color, 0.35);
+    }
+    const start = Math.max(1, chunk.rightStart);
+    const end = chunk.rightCount > 0 ? chunk.rightStart + chunk.rightCount - 1 : start;
+    return {
+      range: new monaco.Range(start, 1, end, 1),
+      options: {
+        overviewRuler: { color, position: monaco.editor.OverviewRulerLane.Full },
+        minimap: { color, position: monaco.editor.MinimapPosition.Gutter },
+      },
+    };
+  });
 }
 
 /** Focus outline on the lines of the currently navigated chunk. */

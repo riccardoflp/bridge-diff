@@ -9,6 +9,7 @@ import {
   applyUserOptions,
   buildActiveChunkDecorations,
   buildDiffDecorations,
+  buildOverviewRulerDecorations,
   createEditors,
   setupMonacoEnvironment,
 } from './editors';
@@ -67,6 +68,7 @@ window.addEventListener('message', (event: MessageEvent) => {
     case 'theme':
       if (model) {
         void initHighlighting(monaco, message.syntaxTheme, model.languageId);
+        setDiffDecorations(model); // ruler colors are resolved, not CSS vars
       }
       break;
     case 'editorConfig':
@@ -133,14 +135,22 @@ function refreshAll(m: AlignedDiffModel): void {
     return;
   }
   setHeaderLabels(layout, m);
-  diffDecorLeft ??= editors.left.createDecorationsCollection([]);
-  diffDecorRight ??= editors.right.createDecorationsCollection([]);
-  diffDecorLeft.set(buildDiffDecorations(m, 'left'));
-  diffDecorRight.set(buildDiffDecorations(m, 'right'));
+  setDiffDecorations(m);
 
   scrollSync.attach(editors.left, editors.right, m);
   connectors.attach(layout.gutter, editors.left, editors.right, m, chunkActions());
   navigation.setModel(m);
+}
+
+function setDiffDecorations(m: AlignedDiffModel): void {
+  if (!editors) {
+    return;
+  }
+  diffDecorLeft ??= editors.left.createDecorationsCollection([]);
+  diffDecorRight ??= editors.right.createDecorationsCollection([]);
+  diffDecorLeft.set(buildDiffDecorations(m, 'left'));
+  // the right pane owns the only visible scrollbar — chunk markers go there
+  diffDecorRight.set([...buildDiffDecorations(m, 'right'), ...buildOverviewRulerDecorations(m)]);
 }
 
 function onNavChange(current: number, total: number, scroll: boolean): void {
