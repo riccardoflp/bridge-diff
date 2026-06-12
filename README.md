@@ -15,11 +15,26 @@ word-level intra-line highlights and chunk navigation.
   blue = modified).
 - **Word-level highlights** inside modified lines, with a noise guard that
   skips intra-line marks when nearly the whole line changed.
+- **Smart scroll sync**: the panes scroll together through a piecewise mapping
+  anchored at chunk boundaries — context scrolls 1:1, and while traversing a
+  large change the shorter side keeps its counterpart near mid-screen, with
+  context visible above and below.
 - **Chunk navigation**: `F7` / `Shift+F7` (like WebStorm) or the floating
-  toolbar, with a "n / m" counter.
+  toolbar, with a "n / m" counter; chunk markers in the overview ruler and
+  minimap.
+- **Per-chunk actions** in the center gutter: revert (⟲) and stage (+) for
+  working-tree diffs, unstage (−) for index diffs — hunk-level staging via
+  `git apply --cached`. Already-staged chunks render dimmed.
+- **File actions** in the panel title bar, like the built-in diff editor:
+  Open File, previous/next change, Stage File, Unstage File, Discard Changes.
+- **Editable diff**: both panes are Monaco editors — the working-tree side is
+  fully editable in place (undo, multi-cursor, find, IME). Edits sync live
+  into the real document (kept dirty); `Ctrl+S` inside the diff saves.
+- **Syntax highlighting** that matches your *actual* color theme: the active
+  theme's JSON is resolved host-side (includes merged) and loaded into shiki.
 - **Live refresh**: the diff updates in place as you edit and save, or as the
   git state changes.
-- Double-click a line to jump to it in the editor.
+- Respects your `editor.*` settings (font, line height, minimap, …).
 
 ## Usage
 
@@ -28,17 +43,8 @@ word-level intra-line highlights and chunk navigation.
 - Right-click a file in the Source Control view → **Open Diff**.
 - Changed files show a diff button in the editor title bar.
 - **Bridge Diff: Open Diff (Index vs HEAD)** compares the staged copy instead.
-
-- **Per-chunk actions** in the center gutter: revert (⟲) and stage (+) for
-  working-tree diffs, unstage (−) for index diffs — hunk-level staging via
-  `git apply --cached`.
-- **File actions** in the panel title bar, like the built-in diff editor:
-  Open File, previous/next change, Stage File, Unstage File, Discard Changes.
-- **Syntax highlighting** that matches your *actual* color theme: the active
-  theme's JSON is resolved host-side (includes merged) and loaded into shiki.
-- **Editable diff**: both panes are Monaco editors — the working-tree side is
-  fully editable in place (undo, multi-cursor, find, IME). Edits sync live
-  into the real document (kept dirty); `Ctrl+S` inside the diff saves.
+- By default Bridge Diff also takes over the diff tabs opened by the built-in
+  git extension (setting `bridgeDiff.interceptGitOpenChange`).
 
 ## Roadmap
 

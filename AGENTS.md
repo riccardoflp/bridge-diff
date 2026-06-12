@@ -49,7 +49,9 @@ src/
     ├── main.ts             # orchestrazione: init/update/theme, edit sync
     ├── editors.ts          # 2 istanze Monaco + decorazioni diff
     ├── highlight.ts        # shiki (JS engine) → shikiToMonaco col tema reale
-    ├── scrollSync.ts       # mapping piecewise-linear ancorato ai chunk
+    ├── scrollSync.ts       # mapping piecewise-linear ancorato ai chunk,
+    │                       #   applicato al centro del viewport (contesto
+    │                       #   visibile sopra/sotto sui chunk grandi)
     ├── connectors.ts       # SVG genie nel gutter + bottoni azioni per chunk
     ├── navigation.ts       # indice chunk corrente (side effect in main)
     └── render.ts           # layout statico + sideText(model, side)

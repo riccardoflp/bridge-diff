@@ -1,6 +1,6 @@
 # PLAN.md — Bridge Diff
 
-Roadmap di progetto. Stato aggiornato all'11 giugno 2026.
+Roadmap di progetto. Stato aggiornato al 12 giugno 2026.
 
 ## Visione
 
@@ -12,7 +12,9 @@ modifiche locali e compare-with arbitrario.
 
 - [x] Motore diff puro (jsdiff → `AlignedDiffModel`, word-diff con guard 65%)
 - [x] Webview con due pannelli a scroll indipendente, sync piecewise-linear
-      ancorato ai chunk (1:1 sul contesto, stretch sui blocchi)
+      ancorato ai chunk (1:1 sul contesto, stretch sui blocchi); la mappa è
+      applicata al centro del viewport, così sui chunk grandi il lato corto
+      resta a metà schermo con contesto sopra e sotto
 - [x] Connettori SVG genie ridisegnati a ogni scroll (rAF)
 - [x] Navigazione chunk: F7 / Shift+F7, toolbar flottante "n / m"
 - [x] Entry point: palette, context menu SCM, bottone editor/title (context key
@@ -58,6 +60,16 @@ QuickPick su `repo.state.refs` + `repo.log()` → pipeline esistente con
 chiave del registry include già i ref. Nascondere stage/revert quando il lato
 destro non è il worktree (flag già in `init.settings`).
 
+## 🚀 Release 0.1.0 (in corso — 12 giugno 2026)
+
+Prima release pubblica. Contenuto: fasi 1–2.6 complete.
+
+- [x] `package.json`: version 0.1.0, publisher, repository, icona, LICENSE
+- [x] README rivisto (feature list aggiornata, niente feature inesistenti)
+- [x] CHANGELOG.md (il marketplace lo mostra nella tab Changelog)
+- [x] `npm test` verde, `npx vsce package` pulito
+- [ ] Tag `v0.1.0` pushato + `npx vsce publish` (richiede PAT Azure DevOps)
+
 ## 🔲 Backlog / idee
 
 - [ ] Collapse delle regioni invariate (i connettori bezier sono già pronti
@@ -65,7 +77,7 @@ destro non è il worktree (flag già in `init.settings`).
 - [ ] Word-wrap opzionale (`settings.wrap` già nel protocollo)
 - [ ] "n of m" nel titolo del pannello (`currentChunkChanged` già emesso)
 - [ ] Merge conflict 3-way (fase lontana, richiede layout a 3 pannelli)
-- [ ] Pubblicazione marketplace: campo `repository` in package.json + remote git
+- [ ] Double-click su una riga per aprirla nell'editor vero
 
 ## Verifica standard
 
